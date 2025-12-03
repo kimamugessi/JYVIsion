@@ -52,6 +52,10 @@ namespace WindowsFormsApp_1203
             logForm.Show(propForm.Pane, DockAlignment.Bottom, 0.5);
         }
         //시범으로 작성
-
+        public static T GetDockForm<T>() where T : DockContent
+        {
+            var findForm=_dockPanel.Contents.OfType<T>().FirstOrDefault();
+            return findForm;
+        }
     }
 }
