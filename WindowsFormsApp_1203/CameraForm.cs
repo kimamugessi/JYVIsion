@@ -1,0 +1,22 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using WeifenLuo.WinFormsUI.Docking;
+
+namespace WindowsFormsApp_1203
+{
+    //public partial class CameraForm :Form
+    public partial class CameraForm : DockContent
+    {
+        public CameraForm()
+        {
+            InitializeComponent();
+        }
+    }
+}
