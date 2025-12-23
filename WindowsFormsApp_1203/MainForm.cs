@@ -51,6 +51,8 @@ namespace JYVision
 
             var logForm = new LogForm();
             logForm.Show(propForm.Pane, DockAlignment.Bottom, 0.5);
+
+
         }
         //시범으로 작성
         public static T GetDockForm<T>() where T : DockContent

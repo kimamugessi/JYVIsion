@@ -38,7 +38,8 @@
             this.ClientSize = new System.Drawing.Size(789, 482);
             this.Controls.Add(this.tabPropControl);
             this.Name = "PropertiesForm";
-            this.ResumeLayout(false);
+            this.Text = "PropertiesForm";
+           this.ResumeLayout(false);
 
         }
 

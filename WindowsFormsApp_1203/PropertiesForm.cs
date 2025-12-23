@@ -15,7 +15,8 @@ namespace JYVision
     public enum PropertyType    //속성창에서 사용할 타입 선언
     {
         Binary,
-        Filter
+        Filter,
+        DeepLearning
     }
     public partial class PropertiesForm : DockContent
     {
@@ -27,6 +28,7 @@ namespace JYVision
 
             LoadOptionControl(PropertyType.Filter); //속성 속 텝들 초기화
             LoadOptionControl(PropertyType.Binary);
+            LoadOptionControl(PropertyType.DeepLearning);
         }
         private void LoadOptionControl(PropertyType propType)   //속성 탭이 이미 있다면 그것을 반환(1), 없다면 새로 생성(2)
         {
@@ -70,6 +72,9 @@ namespace JYVision
                 case PropertyType.Filter:
                     ImageFilterProp filterProp= new ImageFilterProp();
                     curProp= filterProp;
+                    break;
+                case PropertyType.DeepLearning:
+                    DeepLearning deepLearning=new DeepLearning();
                     break;
                 default:
                     MessageBox.Show("유효하지 않은 옵션입니다.");

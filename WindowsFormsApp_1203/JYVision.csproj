@@ -71,6 +71,12 @@
     <Compile Include="Property\BinaryProp.Designer.cs">
       <DependentUpon>BinaryProp.cs</DependentUpon>
     </Compile>
+    <Compile Include="SaigeSDK\DeepLearning.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SaigeSDK\DeepLearning.Designer.cs">
+      <DependentUpon>DeepLearning.cs</DependentUpon>
+    </Compile>
     <Compile Include="StatisticForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -128,6 +134,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="SaigeSDK\DeepLearning.resx">
+      <DependentUpon>DeepLearning.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="StatisticForm.resx">
       <DependentUpon>StatisticForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -148,5 +157,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
