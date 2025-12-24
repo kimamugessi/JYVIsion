@@ -23,7 +23,7 @@ namespace JYVision.Grab
             IFrameOut frameOut = e.FrameOut;
             OnGrabCompleted(BufferIndex);
 
-            if (_userImageBuffer[BufferIndex].ImageBuffer != null)
+            if (_userImageBuffer[BufferIndex].ImageBuffer != null) 
             {
                 if (frameOut.Image.PixelType == MvGvspPixelType.PixelType_Gvsp_Mono8)
                 {
