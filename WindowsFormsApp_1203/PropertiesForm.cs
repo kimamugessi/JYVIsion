@@ -7,7 +7,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using JYVision.Algorithm;
+using JYVision.Core;
 using JYVision.Property;
+using OpenCvSharp;
 using WeifenLuo.WinFormsUI.Docking;
 
 namespace JYVision
@@ -21,7 +24,7 @@ namespace JYVision
     public partial class PropertiesForm : DockContent
     {
         //속성탭을 관리하기 위한 딕셔너리
-        Dictionary<string,TabPage> _allTabs=new Dictionary<string,TabPage>();
+        Dictionary<string, TabPage> _allTabs = new Dictionary<string, TabPage>();
         public PropertiesForm()
         {
             InitializeComponent();
@@ -48,11 +51,11 @@ namespace JYVision
             UserControl _inspProp = CreateUserControl(propType);    //새 UserControl 생성
             if (_inspProp == null) return;
 
-            TabPage newTab=new TabPage(tabName)     //(2)
+            TabPage newTab = new TabPage(tabName)     //(2)
             {
-                Dock=DockStyle.Fill
+                Dock = DockStyle.Fill
             };
-            _inspProp.Dock=DockStyle.Fill;
+            _inspProp.Dock = DockStyle.Fill;
             newTab.Controls.Add(_inspProp);
             tabPropControl.TabPages.Add(newTab);
             tabPropControl.SelectedTab = newTab;    //새 탭 선택
@@ -66,12 +69,15 @@ namespace JYVision
             switch (propType)
             {
                 case PropertyType.Binary:
-                    BinaryProp blobProp=new BinaryProp();
-                    curProp=blobProp;
+                    BinaryProp blobProp = new BinaryProp();
+
+                    blobProp.RangeChanged += RangeSlider_RangeChaged;
+                    blobProp.PropertyChanged += PropertyChanged;
+                    curProp = blobProp;
                     break;
                 case PropertyType.Filter:
-                    ImageFilterProp filterProp= new ImageFilterProp();
-                    curProp= filterProp;
+                    ImageFilterProp filterProp = new ImageFilterProp();
+                    curProp = filterProp;
                     break;
                 case PropertyType.AIModule:
                     AIModuleProp aiModuleProp = new AIModuleProp();
@@ -82,6 +88,30 @@ namespace JYVision
                     return null;
             }
             return curProp;
+        }
+        public void UpdateProperty(BlobAlgorithm blobAlgorithm)
+        {
+            if (blobAlgorithm == null) return;
+            foreach (TabPage tabPage in tabPropControl.TabPages)
+            {
+                if (tabPage.Controls.Count > 0)
+                {
+                    UserControl uc = tabPage.Controls[0] as UserControl;
+                    if (uc is BinaryProp binaryProp) binaryProp.SetAlgorithm(blobAlgorithm);
+                }
+            }
+        }
+        private void RangeSlider_RangeChaged(object sender, RangeChangedEventArgs e)
+        {
+            int lowerValue = e.LowerValue;
+            int upperValue = e.UpperValue;
+            bool invert = e.Invert;
+            ShowBinaryMode showBinaryMode = e.ShowBinMode;
+            Global.Inst.InspStage.PreView?.SetBinary(lowerValue, upperValue, invert, showBinaryMode);
+        }
+        private void PropertyChanged(object sender, EventArgs e)
+        {
+            Global.Inst.InspStage.RedrawMainView();
         }
     }
 }

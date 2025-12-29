@@ -80,12 +80,6 @@ namespace JYVision.Grab
             return true;
         }
 
-        internal override bool Reconnect()
-        {
-            Close();
-            return Open();
-        }
-
         internal override bool GetPixelBpp(out int pixelBpp)
         {
             pixelBpp = 8;

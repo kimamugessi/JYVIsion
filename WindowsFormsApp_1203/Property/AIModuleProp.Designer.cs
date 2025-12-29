@@ -43,24 +43,24 @@
             "Segmentation(SEG)",
             "Detection(DET)",
             "Classification(CLS)"});
-            this.cbAIModelType.Location = new System.Drawing.Point(9, 11);
+            this.cbAIModelType.Location = new System.Drawing.Point(23, 30);
             this.cbAIModelType.Name = "cbAIModelType";
-            this.cbAIModelType.Size = new System.Drawing.Size(233, 26);
+            this.cbAIModelType.Size = new System.Drawing.Size(348, 26);
             this.cbAIModelType.TabIndex = 1;
             this.cbAIModelType.SelectedIndexChanged += new System.EventHandler(this.cbAIModelType_SelectedIndexChanged_1);
             // 
             // txtAIModelPath
             // 
-            this.txtAIModelPath.Location = new System.Drawing.Point(9, 49);
+            this.txtAIModelPath.Location = new System.Drawing.Point(23, 74);
             this.txtAIModelPath.Multiline = true;
             this.txtAIModelPath.Name = "txtAIModelPath";
-            this.txtAIModelPath.Size = new System.Drawing.Size(233, 43);
+            this.txtAIModelPath.Size = new System.Drawing.Size(348, 39);
             this.txtAIModelPath.TabIndex = 2;
             this.txtAIModelPath.Visible = false;
             // 
             // btnInspAI
             // 
-            this.btnInspAI.Location = new System.Drawing.Point(9, 214);
+            this.btnInspAI.Location = new System.Drawing.Point(23, 248);
             this.btnInspAI.Margin = new System.Windows.Forms.Padding(4);
             this.btnInspAI.Name = "btnInspAI";
             this.btnInspAI.Size = new System.Drawing.Size(127, 39);
@@ -70,20 +70,20 @@
             // 
             // btnLoadModel
             // 
-            this.btnLoadModel.Location = new System.Drawing.Point(9, 158);
+            this.btnLoadModel.Location = new System.Drawing.Point(23, 192);
             this.btnLoadModel.Margin = new System.Windows.Forms.Padding(4);
             this.btnLoadModel.Name = "btnLoadModel";
-            this.btnLoadModel.Size = new System.Drawing.Size(127, 44);
+            this.btnLoadModel.Size = new System.Drawing.Size(127, 39);
             this.btnLoadModel.TabIndex = 5;
             this.btnLoadModel.Text = "모델 로딩";
             this.btnLoadModel.UseVisualStyleBackColor = true;
             // 
             // btnSelAIModel
             // 
-            this.btnSelAIModel.Location = new System.Drawing.Point(9, 104);
+            this.btnSelAIModel.Location = new System.Drawing.Point(23, 138);
             this.btnSelAIModel.Margin = new System.Windows.Forms.Padding(4);
             this.btnSelAIModel.Name = "btnSelAIModel";
-            this.btnSelAIModel.Size = new System.Drawing.Size(131, 42);
+            this.btnSelAIModel.Size = new System.Drawing.Size(131, 39);
             this.btnSelAIModel.TabIndex = 4;
             this.btnSelAIModel.Text = "AI모델 선택";
             this.btnSelAIModel.UseVisualStyleBackColor = true;
@@ -98,7 +98,7 @@
             this.Controls.Add(this.txtAIModelPath);
             this.Controls.Add(this.cbAIModelType);
             this.Name = "AIModuleProp";
-            this.Size = new System.Drawing.Size(250, 262);
+            this.Size = new System.Drawing.Size(390, 520);
             this.ResumeLayout(false);
             this.PerformLayout();
 

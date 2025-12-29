@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
 using System.Drawing.Imaging;
 using System.Drawing;
 using System.Linq;
@@ -434,10 +433,10 @@ namespace JYVision.Core
 
             var original = _imageInfo[index].ToBitmap();
 
-            original.Split(_imageByChannel[index][eImageChannel.Red].ImageData,
-                _imageByChannel[index][eImageChannel.Green].ImageData,
-                _imageByChannel[index][eImageChannel.Blue].ImageData,
-                _imageByChannel[index][eImageChannel.Gray].ImageData);
+            //original.Split(_imageByChannel[index][eImageChannel.Red].ImageData,
+            //    _imageByChannel[index][eImageChannel.Green].ImageData,
+            //    _imageByChannel[index][eImageChannel.Blue].ImageData,
+            //    _imageByChannel[index][eImageChannel.Gray].ImageData);
         }
 
         #region Disposable

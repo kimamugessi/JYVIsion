@@ -10,11 +10,10 @@ using System.Windows.Forms;
 using WeifenLuo.WinFormsUI.Docking;
 using System.IO;
 using JYVision.Core;
-using OpenCvSharp;
 
 namespace JYVision
 {
-    //public partial class CameraForm: Form
+    //public partial class CameraForm :Form
     public partial class CameraForm : DockContent
     {
         public CameraForm()
@@ -55,9 +54,6 @@ namespace JYVision
 
             if (imageViewer != null)
                 imageViewer.LoadBitmap(bitmap);
-
-            Mat curImage = Global.Inst.InspStage.GetMat();
-            Global.Inst.InspStage.PreView.SetImage(curImage);
         }
         public Bitmap GetDisplayImage()
         {
@@ -68,6 +64,5 @@ namespace JYVision
 
             return curImage;
         }
-        public void UpdateImageViewer() {  imageViewer.Update(); }
     }
 }

@@ -106,6 +106,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Algorithm\BlobAlgorithm.cs" />
+    <Compile Include="Algorithm\InspAlgorithm.cs" />
     <Compile Include="CameraForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -115,6 +117,7 @@
     <Compile Include="Core\Global.cs" />
     <Compile Include="Core\ImageSpace.cs" />
     <Compile Include="Core\InspStage.cs" />
+    <Compile Include="Core\PreviewImage.cs" />
     <Compile Include="Grab\GrabModel.cs" />
     <Compile Include="Grab\HikRobotCam.cs" />
     <Compile Include="Grab\WebCam.cs" />
@@ -124,17 +127,17 @@
     <Compile Include="Property\AIModuleProp.Designer.cs">
       <DependentUpon>AIModuleProp.cs</DependentUpon>
     </Compile>
-    <Compile Include="Property\ImageFilterProp.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Property\ImageFilterProp.Designer.cs">
-      <DependentUpon>ImageFilterProp.cs</DependentUpon>
-    </Compile>
     <Compile Include="Property\BinaryProp.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Property\BinaryProp.Designer.cs">
       <DependentUpon>BinaryProp.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Property\ImageFilterProp.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Property\ImageFilterProp.Designer.cs">
+      <DependentUpon>ImageFilterProp.cs</DependentUpon>
     </Compile>
     <Compile Include="RunForm.cs">
       <SubType>Form</SubType>
@@ -181,6 +184,13 @@
     <Compile Include="UIControl\ImageViewCtrl.Designer.cs">
       <DependentUpon>ImageViewCtrl.cs</DependentUpon>
     </Compile>
+    <Compile Include="UIControl\RangeTrackbar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UIControl\RangeTrackbar.Designer.cs">
+      <DependentUpon>RangeTrackbar.cs</DependentUpon>
+    </Compile>
+    <Compile Include="util\BitmapExtension.cs" />
     <EmbeddedResource Include="CameraForm.resx">
       <DependentUpon>CameraForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -202,6 +212,9 @@
     </Compile>
     <EmbeddedResource Include="Property\AIModuleProp.resx">
       <DependentUpon>AIModuleProp.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Property\BinaryProp.resx">
+      <DependentUpon>BinaryProp.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ResultForm.resx">
       <DependentUpon>ResultForm.cs</DependentUpon>
