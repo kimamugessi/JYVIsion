@@ -11,6 +11,7 @@ using WeifenLuo.WinFormsUI.Docking;
 using System.IO;
 using JYVision.Core;
 using OpenCvSharp;
+using JYVision.Algorithm;
 
 namespace JYVision
 {
@@ -26,7 +27,7 @@ namespace JYVision
         {    
             if (File.Exists(filename) == false) return; //파일이 없다면 리턴
 
-            Image bitmap = Image.FromFile(filename);
+            Image bitmap = Image.FromFile(filePath);
             imageViewer.LoadBitmap((Bitmap)bitmap);
         }
 
@@ -69,5 +70,9 @@ namespace JYVision
             return curImage;
         }
         public void UpdateImageViewer() {  imageViewer.Update(); }
+
+        public void ResetDisplay() { imageViewer.ResetEntity(); }
+
+        public void AddRect(List<DrawInspectInfo> rectInfos) { imageViewer.AddRect(rectInfos); }
     }
 }

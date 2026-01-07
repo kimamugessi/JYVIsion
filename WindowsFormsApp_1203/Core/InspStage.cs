@@ -45,6 +45,8 @@ namespace JYVision.Core
         public BlobAlgorithm BlobAlgorithm { get => _blobAlgorithm; }
 
         public PreviewImage PreView {  get => _previewImage; }
+
+        public bool LiveMode { get; set; } = false;
         public bool Initialize()
         {
             _imageSpace = new ImageSpace();
@@ -116,6 +118,40 @@ namespace JYVision.Core
                     _imageSpace.GetInspectionBufferHandle(i),
                     i);
             }
+        }
+
+        public void TryInspection()
+        {
+            if(_blobAlgorithm==null) return;
+            Mat srcImage = Global.Inst.InspStage.GetMat();
+            _blobAlgorithm.SetInspData(srcImage);
+
+            _blobAlgorithm.InspRect=new Rect(0,0,srcImage.Width,srcImage.Height);
+
+            if (_blobAlgorithm.DoInspect())
+            {
+                DisplayResult();
+            }
+        }
+
+        private bool DisplayResult()
+        {
+            if(_blobAlgorithm== null) return false;
+
+            List<DrawInspectInfo> resultArea = new List<DrawInspectInfo>();
+            int resultCnt = _blobAlgorithm.GetResultRect(out resultArea);
+            if (resultCnt > 0)
+            {
+                //찾은 위치를 이미지상에서 표시
+                var cameraForm = MainForm.GetDockForm<CameraForm>();
+                if (cameraForm != null)
+                {
+                    cameraForm.ResetDisplay();
+                    cameraForm.AddRect(resultArea);
+                }
+            }
+
+            return true;
         }
 
         public void Grab(int bufferIndex)
