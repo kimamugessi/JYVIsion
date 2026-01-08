@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using JYVision.Algorithm;
 using JYVision.Grab;
 using JYVision.SaigeSDK;
+using JYVison.Teach;
 using OpenCvSharp;
 
 namespace JYVision.Core
@@ -25,6 +26,10 @@ namespace JYVision.Core
 
         BlobAlgorithm _blobAlgorithm = null;
         private PreviewImage _previewImage = null;
+
+        private Model _model=null;
+
+        private InspWindow _selectedInspWindow = null;
 
         public InspStage() { }
         public ImageSpace ImageSpace
@@ -46,6 +51,8 @@ namespace JYVision.Core
 
         public PreviewImage PreView {  get => _previewImage; }
 
+        public Model CurModel {  get => _model; }
+
         public bool LiveMode { get; set; } = false;
         public bool Initialize()
         {
@@ -53,6 +60,8 @@ namespace JYVision.Core
 
             _blobAlgorithm = new BlobAlgorithm();
             _previewImage = new PreviewImage();
+
+            _model=new Model();
 
             switch (_camType)
             {
@@ -90,14 +99,14 @@ namespace JYVision.Core
 
             SetBuffer(bufferCount);
 
-            UpdateProperty();
+            //UpdateProperty();
         }
-        private void UpdateProperty()
+        private void UpdateProperty(InspWindow inspWindow)
         {
-            if(BlobAlgorithm == null) return;
+            if(inspWindow == null) return;
             PropertiesForm propertiesForm = MainForm.GetDockForm<PropertiesForm>();
             if (propertiesForm == null) return;
-            propertiesForm.UpdateProperty(BlobAlgorithm);
+            propertiesForm.UpdateProperty(inspWindow);
         }
         public void SetBuffer(int bufferCount)
         {
@@ -120,17 +129,62 @@ namespace JYVision.Core
             }
         }
 
-        public void TryInspection()
+        public void TryInspection(InspWindow inspWindow = null)
         {
-            if(_blobAlgorithm==null) return;
-            Mat srcImage = Global.Inst.InspStage.GetMat();
-            _blobAlgorithm.SetInspData(srcImage);
-
-            _blobAlgorithm.InspRect=new Rect(0,0,srcImage.Width,srcImage.Height);
-
-            if (_blobAlgorithm.DoInspect())
+            if (inspWindow is null)
             {
-                DisplayResult();
+                if (_selectedInspWindow is null)
+                    return;
+
+                inspWindow = _selectedInspWindow;
+            }
+
+            UpdateDiagramEntity();
+
+            List<DrawInspectInfo> totalArea = new List<DrawInspectInfo>();
+
+            Rect windowArea = inspWindow.WindowArea;
+
+            foreach (var inspAlgo in inspWindow.AlgorithmList)
+            {
+                //검사 영역 초기화
+                inspAlgo.TeachRect = windowArea;
+                inspAlgo.InspRect = windowArea;
+
+                InspectType inspType = inspAlgo.InspectType;
+
+                switch (inspType)
+                {
+                    case InspectType.InspBinary:
+                        {
+                            BlobAlgorithm blobAlgo = (BlobAlgorithm)inspAlgo;
+
+                            Mat srcImage = Global.Inst.InspStage.GetMat();
+                            blobAlgo.SetInspData(srcImage);
+
+                            if (blobAlgo.DoInspect())
+                            {
+                                List<DrawInspectInfo> resultArea = new List<DrawInspectInfo>();
+                                int resultCnt = blobAlgo.GetResultRect(out resultArea);
+                                if (resultCnt > 0)
+                                {
+                                    totalArea.AddRange(resultArea);
+                                }
+                            }
+
+                            break;
+                        }
+                }
+
+                if (inspAlgo.DoInspect())
+                {
+                    List<DrawInspectInfo> resultArea = new List<DrawInspectInfo>();
+                    int resultCnt = inspAlgo.GetResultRect(out resultArea);
+                    if (resultCnt > 0)
+                    {
+                        totalArea.AddRange(resultArea);
+                    }
+                }
             }
         }
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JYVision.Property;
+using JYVison.Teach;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 
@@ -14,12 +15,19 @@ namespace JYVision.Core
     {
         private Mat _originalImage=null;
         private Mat _previewimage=null;
+
+        private InspWindow _inspWindow = null;
         private bool _usePreview = true;
 
         public void SetImage(Mat image)
         {
             _originalImage = image;
             _previewimage = new Mat();
+        }
+
+        public void SetInspWindow(InspWindow inspWindow)
+        {
+            _inspWindow = inspWindow;
         }
 
         public void SetBinary(int lowerValue, int upperValue, bool invert, ShowBinaryMode showBinaryMode)
@@ -38,6 +46,12 @@ namespace JYVision.Core
                 return;
             }
             Rect windowArea = new Rect(0,0,_originalImage.Width,_originalImage.Height);
+
+            if (_inspWindow != null)
+            {
+                windowArea = _inspWindow.WindowArea;
+            }
+
             Mat orgRoi = _originalImage[windowArea];
             Mat grayImage = new Mat();
             if (orgRoi.Type() == MatType.CV_8UC3)
