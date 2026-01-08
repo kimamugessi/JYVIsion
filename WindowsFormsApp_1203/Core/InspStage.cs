@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -186,6 +187,34 @@ namespace JYVision.Core
                     }
                 }
             }
+
+            if (totalArea.Count > 0)
+            {
+                var cameraForm = MainForm.GetDockForm<CameraForm>();
+                if (cameraForm != null) { cameraForm.AddRect(totalArea); }
+            }
+        }
+
+        public void SelectInspWindow(InspWindow inspWindow)
+        {
+            _selectedInspWindow = inspWindow;
+
+            var propForm = MainForm.GetDockForm<PropertiesForm>();
+            if (propForm != null)
+            {
+                if (inspWindow is null)
+                {
+                    propForm.ResetProperty();
+                    return;
+                }
+
+                //속성창을 현재 선택된 ROI에 대한 것으로 변경
+                propForm.ShowProperty(inspWindow);
+            }
+
+            UpdateProperty(inspWindow);
+
+            Global.Inst.InspStage.PreView.SetInspWindow(inspWindow);
         }
 
         private bool DisplayResult()
@@ -265,6 +294,20 @@ namespace JYVision.Core
 
         public Mat GetMat() { return Global.Inst.InspStage.ImageSpace.GetMat(); }
 
+        public void UpdateDiagramEntity()
+        {
+            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null)
+            {
+                cameraForm.UpdateDiagramEntity();
+            }
+
+            ModelTreeForm modelTreeForm = MainForm.GetDockForm<ModelTreeForm>();
+            if (modelTreeForm != null)
+            {
+                modelTreeForm.UpdateDiagramEntity();
+            }
+        }
         public void RedrawMainView()
         {
             CameraForm cameraForm=MainForm.GetDockForm<CameraForm>();

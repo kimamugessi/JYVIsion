@@ -89,6 +89,8 @@ namespace JYVision
             }
             return curProp;
         }
+
+        //public void ResetProperty() {  tabPropControl.TabPages.Clear(); }
         public void UpdateProperty(BlobAlgorithm blobAlgorithm)
         {
             if (blobAlgorithm == null) return;
