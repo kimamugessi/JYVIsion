@@ -1,4 +1,5 @@
 ﻿using JYVision.Core;
+using JYVision.Teach;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 
-namespace JYVison.Teach
+namespace JYVision.Teach
 {
     public class Model
     {

@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OpenCvSharp;
+using JYVision.Core;
 
 namespace JYVision.Algorithm
 {
     public enum InspectType
     {
-        InspNone = -1, InspBinary, InspCount, InspAlModule,InspCount
+        InspNone = -1, InspBinary, InspFilter, InspAlModule,InspCount
     }
     public abstract class InspAlgorithm
     {
@@ -30,8 +31,6 @@ namespace JYVision.Algorithm
         public abstract InspAlgorithm Clone();
         public abstract bool CopyFrom(InspAlgorithm sourceAlgo);
 
-        public virtual void SetInspData(Mat srcImage) { _srcImage = srcImage; }
-
         protected void CopyBaseTo(InspAlgorithm target)
         {
             target.InspectType = this.InspectType;
@@ -41,10 +40,8 @@ namespace JYVision.Algorithm
             target.InspRect = this.InspRect;
             //_srcImage 는 런타임 검사용이라 복사하지 않음
         }
-        public virtual void SetInspData(Mat srcImage)
-        {
-            _srcImage = srcImage;
-        }
+
+        public virtual void SetInspData(Mat srcImage) { _srcImage = srcImage; }
 
         public abstract bool DoInspect();
 

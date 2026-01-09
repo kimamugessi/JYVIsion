@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 
-namespace JYVison.Teach
+namespace JYVision.Teach
 {
     /*
     #10_INSPWINDOW# - <<<검사 ROI>>> 

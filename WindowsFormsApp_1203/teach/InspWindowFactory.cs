@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JYVison.Teach
+namespace JYVision.Teach
 {
     public class InspWindowFactory
     {

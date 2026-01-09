@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using JYVision.Core;
+using JYVision4.Setting;
 using WeifenLuo.WinFormsUI.Docking;
 //using WeifenLuo.WinFormsUI.ThemeVS2015;
 
@@ -83,6 +84,16 @@ namespace JYVision
                     cameraForm.LoadImage(filePath);
                 }
             }
+        }
+        private void SetupMenuItem_Click(object sender, EventArgs e)
+        {
+            SetupForm setupForm = new SetupForm();
+            setupForm.ShowDialog();
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Global.Inst.Dispose();
         }
     }
 }

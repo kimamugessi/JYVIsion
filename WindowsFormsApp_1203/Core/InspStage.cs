@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using JYVision.Algorithm;
 using JYVision.Grab;
 using JYVision.SaigeSDK;
-using JYVison.Teach;
+using JYVision.Teach;
 using OpenCvSharp;
 
 namespace JYVision.Core
@@ -28,7 +28,7 @@ namespace JYVision.Core
         BlobAlgorithm _blobAlgorithm = null;
         private PreviewImage _previewImage = null;
 
-        private Model _model=null;
+        private Model _model =null;
 
         private InspWindow _selectedInspWindow = null;
 
@@ -140,7 +140,7 @@ namespace JYVision.Core
                 inspWindow = _selectedInspWindow;
             }
 
-            UpdateDiagramEntity();
+            //UpdateDiagramEntity();
 
             List<DrawInspectInfo> totalArea = new List<DrawInspectInfo>();
 
@@ -209,7 +209,7 @@ namespace JYVision.Core
                 }
 
                 //속성창을 현재 선택된 ROI에 대한 것으로 변경
-                propForm.ShowProperty(inspWindow);
+               //propForm.ShowProperty(inspWindow);
             }
 
             UpdateProperty(inspWindow);
@@ -294,20 +294,6 @@ namespace JYVision.Core
 
         public Mat GetMat() { return Global.Inst.InspStage.ImageSpace.GetMat(); }
 
-        public void UpdateDiagramEntity()
-        {
-            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
-            if (cameraForm != null)
-            {
-                cameraForm.UpdateDiagramEntity();
-            }
-
-            ModelTreeForm modelTreeForm = MainForm.GetDockForm<ModelTreeForm>();
-            if (modelTreeForm != null)
-            {
-                modelTreeForm.UpdateDiagramEntity();
-            }
-        }
         public void RedrawMainView()
         {
             CameraForm cameraForm=MainForm.GetDockForm<CameraForm>();

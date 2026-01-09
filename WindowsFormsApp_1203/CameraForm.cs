@@ -23,17 +23,19 @@ namespace JYVision
             InitializeComponent();
         }
 
-        public void LoadImage(string filename)  //이미지 경로받아 PictureBox에 이미지를 로드
-        {    
-            if (File.Exists(filename) == false) return; //파일이 없다면 리턴
 
-            Image bitmap = Image.FromFile(filePath);
-            imageViewer.LoadBitmap((Bitmap)bitmap);
-        }
 
         private void imageViewer_Load(object sender, EventArgs e)
         {
 
+        }
+
+        public void LoadImage(string filePath)  //이미지 경로받아 PictureBox에 이미지를 로드
+        {
+            if (File.Exists(filePath) == false) return; //파일이 없다면 리턴
+
+            Image bitmap = Image.FromFile(filePath);
+            imageViewer.LoadBitmap((Bitmap)bitmap);
         }
 
         private void CameraForm_Resize(object sender, EventArgs e)
