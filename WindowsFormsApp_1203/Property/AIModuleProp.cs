@@ -83,7 +83,7 @@ namespace JYVision.Property
             }
 
             Bitmap bitmap = Global.Inst.InspStage.GetCurrentImage();
-            if (bitmap is null)
+            if (bitmap == null)
             {
                 MessageBox.Show("현재 이미지가 없습니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;

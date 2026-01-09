@@ -22,7 +22,7 @@ namespace JYVision4.Setting
         {
             get
             {
-                if (_setting is null)
+                if (_setting == null)
                     Load();
 
                 return _setting;
@@ -44,7 +44,7 @@ namespace JYVision4.Setting
                 _setting = XmlHelper.LoadXml<SettingXml>(settingFilePath);
             }
 
-            if (_setting is null)
+            if (_setting == null)
             {
                 //환경설정 파일이 없다면 새로 생성
                 _setting = CreateDefaultInstance();

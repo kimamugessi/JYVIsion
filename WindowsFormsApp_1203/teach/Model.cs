@@ -13,7 +13,6 @@ namespace JYVision.Teach
 {
     public class Model
     {
-        //모델 정보 저장을 위해 추가한 프로퍼티
         public string ModelName { get; set; } = "";
         public string ModelInfo { get; set; } = "";
         public string ModelPath { get; set; } = "";
@@ -37,7 +36,7 @@ namespace JYVision.Teach
 
         public bool AddInspWindow(InspWindow inspWindow)
         {
-            if (inspWindow is null)
+            if (inspWindow == null)
                 return false;
 
             InspWindowList.Add(inspWindow);
@@ -62,7 +61,6 @@ namespace JYVision.Teach
             return InspWindowList.Count < before;
         }
 
-        //신규 모델 생성
         public void CreateModel(string path, string modelName, string modelInfo)
         {
             ModelPath = path;

@@ -8,30 +8,30 @@ using JYVision.Core;
 
 namespace JYVision.Algorithm
 {
-    public enum InspectType
+    public enum InspectType /*검사 알고리즘 타입*/
     {
         InspNone = -1, InspBinary, InspFilter, InspAlModule,InspCount
     }
-    public abstract class InspAlgorithm
+    public abstract class InspAlgorithm /*검사 알고리즘 기본 클래스*/
     {
-        public InspectType InspectType { get; set; }= InspectType.InspNone;
+        public InspectType InspectType { get; set; }= InspectType.InspNone; //검사 알고리즘 타입
 
-        public bool IsUse { get; set; }= true;
-        public bool IsInspected { get; set;}= false;
+        public bool IsUse { get; set; }= true; //검사 알고리즘 사용 유무
+        public bool IsInspected { get; set;}= false; //검사 알고리즘 검사 완료 유무
 
-        public Rect TeachRect { get; set; }
+        public Rect TeachRect { get; set; } //학습할 영역 정보 저장 변수
 
-        public Rect InspRect { get; set; }
+        public Rect InspRect { get; set; } //검사할 영역 정보 저장 변수
 
-        protected Mat _srcImage = null;
-        public List<string> ResultString { get; set; }= new List<string>();
+        protected Mat _srcImage = null; //런타임 검사에 사용할 원본 이미지 저장 변수
+        public List<string> ResultString { get; set; }= new List<string>(); //검사 결과 문자열 저장 변수
 
-        public bool IsDefect { get; set; }
+        public bool IsDefect { get; set; } //검사 결과 불량 유무 저장 변수
 
-        public abstract InspAlgorithm Clone();
-        public abstract bool CopyFrom(InspAlgorithm sourceAlgo);
+        public abstract InspAlgorithm Clone(); //검사 알고리즘 복제 함수
+        public abstract bool CopyFrom(InspAlgorithm sourceAlgo); 
 
-        protected void CopyBaseTo(InspAlgorithm target)
+        protected void CopyBaseTo(InspAlgorithm target) //검사 알고리즘 기본 속성 복사 함수
         {
             target.InspectType = this.InspectType;
             target.IsUse = this.IsUse;
@@ -41,18 +41,18 @@ namespace JYVision.Algorithm
             //_srcImage 는 런타임 검사용이라 복사하지 않음
         }
 
-        public virtual void SetInspData(Mat srcImage) { _srcImage = srcImage; }
+        public virtual void SetInspData(Mat srcImage) { _srcImage = srcImage; } //런타임 검사에 사용할 원본 이미지 설정 함수
 
-        public abstract bool DoInspect();
+        public abstract bool DoInspect(); //검사 수행 함수
 
-        public virtual void ResetResult()
+        public virtual void ResetResult() //검사 결과 초기화 함수
         {
             IsInspected = false;
             IsDefect = false;
             ResultString.Clear();
         }
 
-        public virtual int GetResultRect(out List<DrawInspectInfo> resultArea)
+        public virtual int GetResultRect(out List<DrawInspectInfo> resultArea) //검사 결과 영역 정보 반환 함수
         {
             resultArea = null;
             return 0;

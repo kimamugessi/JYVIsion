@@ -171,7 +171,7 @@ namespace JYVision.SaigeSDK
         // 입력된 이미지에서 IAD 검사 진행
         public bool InspAIModule(Bitmap bmpImage)
         {
-            if (bmpImage is null)
+            if (bmpImage == null)
             {
                 MessageBox.Show("이미지가 없습니다. 유효한 이미지를 입력해주세요.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
@@ -270,7 +270,7 @@ namespace JYVision.SaigeSDK
 
         public Bitmap GetResultImage()
         {
-            if (_inspImage is null)
+            if (_inspImage == null)
                 return null;
 
             Bitmap resultImage = _inspImage.Clone(new Rectangle(0, 0, _inspImage.Width, _inspImage.Height), System.Drawing.Imaging.PixelFormat.Format24bppRgb);

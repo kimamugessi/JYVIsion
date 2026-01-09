@@ -22,12 +22,10 @@ namespace JYVision.Teach
         }
         #endregion
 
-        //같은 타입의 일련번호 관리를 위한 딕셔너리
         private Dictionary<string, int> _windowTypeNo = new Dictionary<string, int>();
 
         public InspWindowFactory() { }
 
-        //InspWindow를 생성하기 위해, 타입을 입력받아, 생성된 InspWindow 반환
         public InspWindow Create(InspWindowType windowType, bool addAlgorithm = true)
         {
             string name, prefix;
@@ -35,7 +33,7 @@ namespace JYVision.Teach
                 return null;
 
             InspWindow inspWindow = new InspWindow(windowType, name);
-            if (inspWindow is null)
+            if (inspWindow == null)
                 return null;
 
             if (!_windowTypeNo.ContainsKey(name))
@@ -72,7 +70,6 @@ namespace JYVision.Teach
             return true;
         }
 
-        //타입을 입력하면, 해당 타입의 이름과 UID 이름 반환
         private bool GetWindowName(InspWindowType windowType, out string name, out string prefix)
         {
             name = string.Empty;

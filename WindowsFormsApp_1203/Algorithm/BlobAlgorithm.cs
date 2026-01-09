@@ -9,36 +9,36 @@ using OpenCvSharp;
 
 namespace JYVision.Algorithm
 {
-    public struct BinaryThreshold
+    public struct BinaryThreshold /*이진화 임계값 구조체*/
     {
-        public int lower { get; set; }
-        public int upper { get; set; }
-        public bool invert { get; set; }
+        public int lower { get; set; } //이진화 하한값
+        public int upper { get; set; } //이진화 상한값
+        public bool invert { get; set; } //이진화 반전 여부
 
-        public BinaryThreshold(int _lower, int _upper,bool _invert)
+        public BinaryThreshold(int _lower, int _upper,bool _invert) //이진화 임계값 구조체 생성자
         {
             lower = _lower; upper = _upper; invert = _invert;
         }
     }
 
-    public enum BinaryMethod : int
+    public enum BinaryMethod : int /*이진화 검사 방법 열거형*/
     {
         [Description("필터")]
         Feature, 
         [Description("필셀갯수")]
         PixelCount
     }
-    public class BlobFilter
+    public class BlobFilter /*블롭 필터 클래스*/
     {
-        public string name { get; set; }
-        public bool isUse { get; set; }
-        public int min { get; set; }
-        public int max { get; set; }
+        public string name { get; set; } //필터 이름
+        public bool isUse { get; set; } //필터 사용 유무
+        public int min { get; set; } //필터 최소값
+        public int max { get; set; } //필터 최대값
 
-        public BlobFilter() { }
+        public BlobFilter() { } //블롭 필터 클래스 생성자
     }
 
-    public class BlobAlgorithm :InspAlgorithm
+    public class BlobAlgorithm : InspAlgorithm  /*블롭 검사 알고리즘 클래스*/
     {
         public BinaryThreshold BinThreshold {  get; set; }= new BinaryThreshold();
 
@@ -67,19 +67,18 @@ namespace JYVision.Algorithm
             BinThreshold = new BinaryThreshold(100, 200, false);
         }
 
-        public override InspAlgorithm Clone()
+        public override InspAlgorithm Clone()   /*검사 알고리즘 복제 함수*/
         {
-            var cloneAlgo = new BlobAlgorithm();
+            var cloneAlgo = new BlobAlgorithm(); // 새로운 BlobAlgorithm 객체 생성
 
-            // 공통 필드 복사
-            this.CopyBaseTo(cloneAlgo);
+            this.CopyBaseTo(cloneAlgo); // 기본 속성 복사
 
-            cloneAlgo.CopyFrom(this);
+            cloneAlgo.CopyFrom(this); // BlobAlgorithm 고유 속성 복사
 
-            return cloneAlgo;
+            return cloneAlgo; // 복제된 객체 반환
         }
 
-        public override bool CopyFrom(InspAlgorithm sourceAlgo)
+        public override bool CopyFrom(InspAlgorithm sourceAlgo) /*검사 알고리즘 속성 복사 함수*/
         {
             BlobAlgorithm blobAlgo = (BlobAlgorithm)sourceAlgo;
 
@@ -217,7 +216,7 @@ namespace JYVision.Algorithm
             // 필터링된 객체를 담을 리스트
             Mat filteredImage = Mat.Zeros(binImage.Size(), MatType.CV_8UC1);
 
-            if (_findArea is null)
+            if (_findArea == null)
                 _findArea = new List<DrawInspectInfo>();
 
             _findArea.Clear();
@@ -369,7 +368,7 @@ namespace JYVision.Algorithm
             if (!IsInspected)
                 return -1;
 
-            if (_findArea is null || _findArea.Count <= 0)
+            if (_findArea == null || _findArea.Count <= 0)
                 return -1;
 
             resultArea = _findArea;

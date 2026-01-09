@@ -110,7 +110,7 @@ namespace JYVision.Grab
                         string strIP = nIp1 + "." + nIp2 + "." + nIp3 + "." + nIp4;
                         Console.WriteLine("DevIP" + strIP);
 
-                        if (_strIpAddr is null || strIP == strIpAddr)
+                        if (_strIpAddr == null || strIP == strIpAddr)
                         {
                             selDevIndex = devIndex;
                             break;
@@ -384,7 +384,7 @@ namespace JYVision.Grab
 
         internal override bool SetTriggerMode(bool hardwareTrigger)
         {
-            if (_device is null)
+            if (_device == null)
                 return false;
 
             HardwareTrigger = hardwareTrigger;

@@ -167,7 +167,7 @@ namespace JYVision.Grab
 
         internal override bool SetTriggerMode(bool hardwareTrigger)
         {
-            if (_capture is null)
+            if (_capture == null)
                 return false;
 
             HardwareTrigger = hardwareTrigger;

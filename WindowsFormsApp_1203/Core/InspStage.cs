@@ -11,6 +11,7 @@ using JYVision.Grab;
 using JYVision.SaigeSDK;
 using JYVision.Teach;
 using OpenCvSharp;
+using OpenCvSharp.Extensions;
 
 namespace JYVision.Core
 {
@@ -42,17 +43,17 @@ namespace JYVision.Core
         {
             get
             {
-                if (_saigeAI is null)
+                if (_saigeAI == null)
                     _saigeAI = new SaigeAI();
                 return _saigeAI;
             }
         }
 
-        public BlobAlgorithm BlobAlgorithm { get => _blobAlgorithm; }
+        public BlobAlgorithm BlobAlgorithm { get => _blobAlgorithm; } 
 
-        public PreviewImage PreView {  get => _previewImage; }
+        public PreviewImage PreView {  get => _previewImage; } 
 
-        public Model CurModel {  get => _model; }
+        public Model CurModel {  get => _model; } //현재 모델
 
         public bool LiveMode { get; set; } = false;
         public bool Initialize()
@@ -61,7 +62,6 @@ namespace JYVision.Core
 
             _blobAlgorithm = new BlobAlgorithm();
             _previewImage = new PreviewImage();
-
             _model=new Model();
 
             switch (_camType)
@@ -70,7 +70,7 @@ namespace JYVision.Core
                 case CameraType.HikRobotCam: _grabManager = new HikRobotCam(); break;
             }
 
-            if (_grabManager.InitGrab() == true)
+            if (_grabManager != null && _grabManager.InitGrab() == true)
             {
                 _grabManager.TransferCompleted += _multiGrab_TransferCompleted;
 
@@ -130,13 +130,11 @@ namespace JYVision.Core
             }
         }
 
-        public void TryInspection(InspWindow inspWindow = null)
+        public void TryInspection(InspWindow inspWindow = null) //inspWindow에 대한 검사구현
         {
-            if (inspWindow is null)
+            if (inspWindow == null)
             {
-                if (_selectedInspWindow is null)
-                    return;
-
+                if (_selectedInspWindow == null) return;
                 inspWindow = _selectedInspWindow;
             }
 
@@ -148,7 +146,6 @@ namespace JYVision.Core
 
             foreach (var inspAlgo in inspWindow.AlgorithmList)
             {
-                //검사 영역 초기화
                 inspAlgo.TeachRect = windowArea;
                 inspAlgo.InspRect = windowArea;
 
@@ -167,12 +164,8 @@ namespace JYVision.Core
                             {
                                 List<DrawInspectInfo> resultArea = new List<DrawInspectInfo>();
                                 int resultCnt = blobAlgo.GetResultRect(out resultArea);
-                                if (resultCnt > 0)
-                                {
-                                    totalArea.AddRange(resultArea);
-                                }
+                                if (resultCnt > 0) totalArea.AddRange(resultArea);
                             }
-
                             break;
                         }
                 }
@@ -191,32 +184,68 @@ namespace JYVision.Core
             if (totalArea.Count > 0)
             {
                 var cameraForm = MainForm.GetDockForm<CameraForm>();
-                if (cameraForm != null) { cameraForm.AddRect(totalArea); }
+                if (cameraForm != null) cameraForm.AddRect(totalArea);
             }
         }
 
-        public void SelectInspWindow(InspWindow inspWindow)
+        public void SelectInspWindow(InspWindow inspWindow) //검사 윈도우 선택
         {
             _selectedInspWindow = inspWindow;
 
             var propForm = MainForm.GetDockForm<PropertiesForm>();
             if (propForm != null)
             {
-                if (inspWindow is null)
+                if (inspWindow == null)
                 {
                     propForm.ResetProperty();
                     return;
                 }
-
-                //속성창을 현재 선택된 ROI에 대한 것으로 변경
-               //propForm.ShowProperty(inspWindow);
+               //+propForm.ShowProperty(inspWindow);
             }
 
             UpdateProperty(inspWindow);
 
             Global.Inst.InspStage.PreView.SetInspWindow(inspWindow);
         }
+        public void AddInspWindow(InspWindowType windowType, Rect rect)
+        {
+            InspWindow inspWindow = _model.AddInspWindow(windowType);
+            if (inspWindow is null)
+                return;
 
+            inspWindow.WindowArea = rect;
+            inspWindow.IsTeach = false;
+            UpdateProperty(inspWindow);
+            UpdateDiagramEntity();
+
+            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null)
+            {
+                cameraForm.SelectDiagramEntity(inspWindow);
+                SelectInspWindow(inspWindow);
+            }
+        }
+        public bool AddInspWindow(InspWindow sourceWindow, OpenCvSharp.Point offset)
+        {
+            InspWindow cloneWindow = sourceWindow.Clone(offset);
+            if (cloneWindow is null)
+                return false;
+
+            if (!_model.AddInspWindow(cloneWindow))
+                return false;
+
+            UpdateProperty(cloneWindow);
+            UpdateDiagramEntity();
+
+            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null)
+            {
+                cameraForm.SelectDiagramEntity(cloneWindow);
+                SelectInspWindow(cloneWindow);
+            }
+
+            return true;
+        }
         private bool DisplayResult()
         {
             if(_blobAlgorithm== null) return false;
@@ -236,6 +265,41 @@ namespace JYVision.Core
 
             return true;
         }
+        //입력된 윈도우 이동
+        public void MoveInspWindow(InspWindow inspWindow, OpenCvSharp.Point offset)
+        {
+            if (inspWindow == null)
+                return;
+
+            inspWindow.OffsetMove(offset);
+            UpdateProperty(inspWindow);
+        }
+
+        //#MODEL#10 기존 ROI 수정되었을때, 그 정보를 InspWindow에 반영
+        public void ModifyInspWindow(InspWindow inspWindow, Rect rect)
+        {
+            if (inspWindow == null)
+                return;
+
+            inspWindow.WindowArea = rect;
+            inspWindow.IsTeach = false;
+
+            UpdateProperty(inspWindow);
+        }
+
+        //#MODEL#11 InspWindow 삭제하기
+        public void DelInspWindow(InspWindow inspWindow)
+        {
+            _model.DelInspWindow(inspWindow);
+            UpdateDiagramEntity();
+        }
+
+
+        public void DelInspWindow(List<InspWindow> inspWindowList)
+        {
+            _model.DelInspWindowList(inspWindowList);
+            UpdateDiagramEntity();
+        }
 
         public void Grab(int bufferIndex)
         {
@@ -252,6 +316,18 @@ namespace JYVision.Core
             _imageSpace.Split(bufferIndex);
 
             DisplayGrabImage(bufferIndex);
+
+            if (_previewImage != null)
+            {
+                Bitmap bitmap = ImageSpace.GetBitmap(0);
+                _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
+            }
+
+            if (LiveMode)
+            {
+                //+await Task.Delay(100);  // 비동기 대기
+                _grabManager.Grab(bufferIndex, true);  // 다음 촬영 시작
+            }
         }
 
         private void DisplayGrabImage(int bufferIndex)
@@ -286,7 +362,7 @@ namespace JYVision.Core
 
         public Bitmap GetBitmap(int bufferIndex = -1)
         {
-            if (Global.Inst.InspStage.ImageSpace is null)
+            if (Global.Inst.InspStage.ImageSpace == null)
                 return null;
 
             return Global.Inst.InspStage.ImageSpace.GetBitmap();
@@ -294,6 +370,20 @@ namespace JYVision.Core
 
         public Mat GetMat() { return Global.Inst.InspStage.ImageSpace.GetMat(); }
 
+        public void UpdateDiagramEntity()
+        {
+            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null)
+            {
+                //+cameraForm.UpdateDiagramEntity();
+            }
+
+            //+ModelTreeForm modelTreeForm = MainForm.GetDockForm<ModelTreeForm>();
+            //+if (modelTreeForm != null)
+            //{
+            //    modelTreeForm.UpdateDiagramEntity();
+            //}
+        }
         public void RedrawMainView()
         {
             CameraForm cameraForm=MainForm.GetDockForm<CameraForm>();

@@ -12,6 +12,7 @@ using System.IO;
 using JYVision.Core;
 using OpenCvSharp;
 using JYVision.Algorithm;
+using JYVision.Teach;
 
 namespace JYVision
 {
@@ -72,7 +73,10 @@ namespace JYVision
             return curImage;
         }
         public void UpdateImageViewer() {  imageViewer.Update(); }
-
+        public void SelectDiagramEntity(InspWindow window)
+        {
+            imageViewer.SelectDiagramEntity(window);
+        }
         public void ResetDisplay() { imageViewer.ResetEntity(); }
 
         public void AddRect(List<DrawInspectInfo> rectInfos) { imageViewer.AddRect(rectInfos); }

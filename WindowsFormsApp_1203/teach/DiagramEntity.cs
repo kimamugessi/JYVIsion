@@ -9,16 +9,12 @@ namespace JYVision.Teach
 {
     public class DiagramEntity
     {
-        //ROI 연결된 InspWindow
-        public InspWindow LinkedWindow { get; set; }
-        //ROI 영역정보
-        public Rectangle EntityROI { get; set; }
-        //ROI 표시 칼라
-        public Color EntityColor { get; set; }
-        //ROI 위치 이동을 하지 못하게 할지 여부
-        public bool IsHold { get; set; }
+        public InspWindow LinkedWindow { get; set; } //ROI에 연결된 InspWindow
+        public Rectangle EntityROI { get; set; } //ROI 영역 정보
+        public Color EntityColor { get; set; } //ROI 표시 색상
+        public bool IsHold { get; set; }    //ROI 고정 여부
 
-        public DiagramEntity()
+        public DiagramEntity()  //생성자에서 기본값 설정
         {
             LinkedWindow = null;
             EntityROI = new Rectangle(0, 0, 0, 0);
@@ -26,7 +22,7 @@ namespace JYVision.Teach
             IsHold = false;
         }
 
-        public DiagramEntity(Rectangle rect, Color entityColor, bool hold = false)
+        public DiagramEntity(Rectangle rect, Color entityColor, bool hold = false) //매개변수 있는 생성자
         {
             LinkedWindow = null;
             EntityROI = rect;

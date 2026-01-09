@@ -133,7 +133,7 @@ namespace JYVision.Property
   
         public void SetProperty()
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             chkUse.Checked = _blobAlgo.IsUse;
@@ -158,7 +158,7 @@ namespace JYVision.Property
 
         public void GetProperty()
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             _blobAlgo.IsUse = chkUse.Checked;
@@ -293,7 +293,7 @@ namespace JYVision.Property
 
         private void chkRotatedRect_CheckedChanged(object sender, EventArgs e)
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             _blobAlgo.UseRotatedRect = chkRotatedRect.Checked;
@@ -301,7 +301,7 @@ namespace JYVision.Property
 
         private void cbBinMethod_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             _blobAlgo.BinMethod = (BinaryMethod)cbBinMethod.SelectedIndex;

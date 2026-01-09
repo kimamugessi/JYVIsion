@@ -71,7 +71,7 @@ namespace JYVision
         private void imageOpenToolStripMenuItem_Click_1(object sender, EventArgs e)
         {
             CameraForm cameraForm = GetDockForm<CameraForm>();
-            if (cameraForm is null) return;
+            if (cameraForm == null) return;
 
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {

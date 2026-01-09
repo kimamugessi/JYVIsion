@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JYVision.Property;
-using JYVison.Teach;
+using JYVision.Teach;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 
@@ -25,7 +25,7 @@ namespace JYVision.Core
             _previewimage = new Mat();
         }
 
-        public void SetInspWindow(InspWindow inspWindow)
+        public void SetInspWindow(InspWindow inspWindow)    /*검사 윈도우 설정*/
         {
             _inspWindow = inspWindow;
         }
@@ -47,9 +47,9 @@ namespace JYVision.Core
             }
             Rect windowArea = new Rect(0,0,_originalImage.Width,_originalImage.Height);
 
-            if (_inspWindow != null)
+            if (_inspWindow != null) //검사 윈도우가 설정되어 있다면 해당 영역으로 설정
             {
-                windowArea = _inspWindow.WindowArea;
+                windowArea = _inspWindow.WindowArea; //검사 윈도우 영역
             }
 
             Mat orgRoi = _originalImage[windowArea];
