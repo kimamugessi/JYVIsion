@@ -113,7 +113,7 @@ namespace JYVision.Inspect
                     resultForm.AddModelResult(curMode);
                 }
             }
-
+             
             return true;
         }
 
