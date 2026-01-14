@@ -14,12 +14,13 @@ namespace JYVision.Core
 {
     public enum eImageChannel : int
     {
+        None = -1,
         Color,
         Gray,
         Red,
         Green,
         Blue,
-        ChannelCount = 5,
+        ChannelCount,
     }
 
     //검사와 관련된 이미지 버퍼를 관리하는 클래스
@@ -194,6 +195,9 @@ namespace JYVision.Core
                 return;
 
             Dispose();
+
+            _imageByChannel.Clear();
+            _imageInfo.Clear();
 
             Func<int, ImageInfo> newImageInfo = (x) =>
             {
@@ -385,7 +389,7 @@ namespace JYVision.Core
             if (_imageInfo.Count <= index)
                 return null;
 
-            if (channel == eImageChannel.Gray)
+            if (channel == eImageChannel.Color)
             {
                 return _imageInfo[index].ToMat();
             }

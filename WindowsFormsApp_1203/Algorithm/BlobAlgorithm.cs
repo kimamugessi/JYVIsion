@@ -24,8 +24,8 @@ namespace JYVision.Algorithm
     public enum BinaryMethod : int /*이진화 검사 방법 열거형*/
     {
         [Description("필터")]
-        Feature, 
-        [Description("필셀갯수")]
+        Feature,
+        [Description("픽셀갯수")]
         PixelCount
     }
     public class BlobFilter /*블롭 필터 클래스*/
@@ -126,7 +126,10 @@ namespace JYVision.Algorithm
 
             if(_srcImage==null) return false;
 
-            if(InspRect.Right>_srcImage.Width||InspRect.Bottom>_srcImage.Height) return false;
+            //검사 영역이 검사 대상 이미지를 벗어나지 않는지 확인
+            if (InspRect.Right > _srcImage.Width ||
+                InspRect.Bottom > _srcImage.Height)
+                return false;
 
             Mat targetImage = _srcImage[InspRect];
 
@@ -165,7 +168,7 @@ namespace JYVision.Algorithm
         }
 
         private bool InspPixelCount(Mat binImage) {
-            if(binImage.Empty()) return false;
+            if(binImage.Empty() || binImage.Type() != MatType.CV_8UC1) return false;
 
             int pixelCount=Cv2.CountNonZero(binImage);
 
@@ -179,7 +182,8 @@ namespace JYVision.Algorithm
             BlobFilter areaFilter = BlobFilters[FILTER_AREA];
             if (areaFilter.isUse)
             {
-                if ((areaFilter.min > 0 && pixelCount < areaFilter.min) || (areaFilter.max > 0 && pixelCount < areaFilter.max))
+                if ((areaFilter.min > 0 && pixelCount < areaFilter.min) ||
+                    (areaFilter.max > 0 && pixelCount > areaFilter.max))
                 {
                     IsDefect = true;
                     result = "NG";
@@ -341,6 +345,11 @@ namespace JYVision.Algorithm
                     IsDefect = true;
 
                 if (IsDefect == false && countFilter.max > 0 && findBlobCount > countFilter.max)
+                    IsDefect = true;
+            }
+            else
+            {
+                if (_findArea.Count > 0)
                     IsDefect = true;
             }
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using JYVision.Util;
 using OpenCvSharp;
 
 namespace JYVision.Grab
@@ -46,6 +47,10 @@ namespace JYVision.Grab
                     if (_userImageBuffer[BufferIndex].ImageBuffer.Length >= bufSize)
                     {
                         Marshal.Copy(_frame.Data, _userImageBuffer[BufferIndex].ImageBuffer, 0, bufSize);
+                    }
+                    else
+                    {
+                        SLogger.Write("Error: Buffer size is too small.", SLogger.LogType.Error);
                     }
                 }
 

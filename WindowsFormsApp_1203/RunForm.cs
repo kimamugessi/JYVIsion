@@ -21,6 +21,7 @@ namespace JYVision
 
         private void btnGrab_Click(object sender, EventArgs e)
         {
+            Global.Inst.InspStage.CheckImageBuffer();
             Global.Inst.InspStage.Grab(0);
         }
         private void btnStart_Click(object sender, EventArgs e)
@@ -34,6 +35,7 @@ namespace JYVision
 
             if (Global.Inst.InspStage.LiveMode)
             {
+                Global.Inst.InspStage.CheckImageBuffer();
                 Global.Inst.InspStage.Grab(0);
             }
         }

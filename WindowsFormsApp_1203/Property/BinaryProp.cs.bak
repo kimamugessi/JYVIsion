@@ -133,7 +133,7 @@ namespace JYVision.Property
   
         public void SetProperty()
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             chkUse.Checked = _blobAlgo.IsUse;
@@ -158,7 +158,7 @@ namespace JYVision.Property
 
         public void GetProperty()
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             _blobAlgo.IsUse = chkUse.Checked;
@@ -277,8 +277,53 @@ namespace JYVision.Property
 
         private void dataGridViewFilter_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            if(_updateDataGridView==true) UpdateDataGridView(false);
+            if (_updateDataGridView == true)
+                UpdateDataGridView(false);
         }
+
+        // DataGridView안에 있는 체크박스의 경우, CellValueChanged가 발생하지 않아,
+        // CellDirtyStateChanged 이벤트를 사용하여 체크박스의 상태가 변경될 때 CommitEdit을 호출합니다.
+        private void dataGridViewFilter_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            if (dataGridViewFilter.CurrentCell is DataGridViewCheckBoxCell)
+            {
+                dataGridViewFilter.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            }
+        }
+
+        private void chkRotatedRect_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_blobAlgo == null)
+                return;
+
+            _blobAlgo.UseRotatedRect = chkRotatedRect.Checked;
+        }
+
+        private void cbBinMethod_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_blobAlgo == null)
+                return;
+
+            _blobAlgo.BinMethod = (BinaryMethod)cbBinMethod.SelectedIndex;
+            chkRotatedRect.Enabled = _blobAlgo.BinMethod == BinaryMethod.Feature;
+
+            if (_blobAlgo.BinMethod == BinaryMethod.PixelCount)
+            {
+                for (int i = 0; i < dataGridViewFilter.Rows.Count; i++)
+                {
+                    bool useFeature = i == 0 ? true : false; // Area 필터만 사용 가능
+                    dataGridViewFilter.Rows[i].Cells[COL_USE].Value = useFeature;
+                }
+                dataGridViewFilter.Columns[COL_USE].ReadOnly = true;
+            }
+            else
+            {
+                dataGridViewFilter.Columns[COL_USE].ReadOnly = false;
+            }
+
+            _updateDataGridView = true;
+        }
+
     }
 
     //이진화 관련 이벤트 발생시, 전달할 값 추가

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using JYVision.Util;
 using OpenCvSharp;
 
 namespace JYVision.Grab
@@ -47,9 +48,13 @@ namespace JYVision.Grab
                     {
                         Marshal.Copy(_frame.Data, _userImageBuffer[BufferIndex].ImageBuffer, 0, bufSize);
                     }
+                    else
+                    {
+                        SLogger.Write("Error: Buffer size is too small.", SLogger.LogType.Error);
+                    }
                 }
 
-                OnTransferCompleted(BufferIndex);
+                 OnTransferCompleted(BufferIndex);
 
                 if (IncreaseBufferIndex)
                 {
@@ -78,6 +83,12 @@ namespace JYVision.Grab
             _capture.Set(VideoCaptureProperties.CodecPixelFormat, fourccBGR3);
 
             return true;
+        }
+
+        internal override bool Reconnect()
+        {
+            Close();
+            return Open();
         }
 
         internal override bool GetPixelBpp(out int pixelBpp)
@@ -161,7 +172,7 @@ namespace JYVision.Grab
 
         internal override bool SetTriggerMode(bool hardwareTrigger)
         {
-            if (_capture is null)
+            if (_capture == null)
                 return false;
 
             HardwareTrigger = hardwareTrigger;

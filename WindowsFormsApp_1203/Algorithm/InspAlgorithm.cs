@@ -5,54 +5,72 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenCvSharp;
 using JYVision.Core;
+using System.Xml.Serialization;
 
 namespace JYVision.Algorithm
 {
-    public enum InspectType /*검사 알고리즘 타입*/
+    [XmlInclude(typeof(MatchAlgorithm))]
+    [XmlInclude(typeof(BlobAlgorithm))]
+    public abstract class InspAlgorithm
     {
-        InspNone = -1, InspBinary, InspFilter, InspAlModule,InspCount
-    }
-    public abstract class InspAlgorithm /*검사 알고리즘 기본 클래스*/
-    {
-        public InspectType InspectType { get; set; }= InspectType.InspNone; //검사 알고리즘 타입
+        //알고리즘 타입 정의
+        public InspectType InspectType { get; set; } = InspectType.InspNone;
 
-        public bool IsUse { get; set; }= true; //검사 알고리즘 사용 유무
-        public bool IsInspected { get; set;}= false; //검사 알고리즘 검사 완료 유무
+        //알고지즘을 사용할지 여부 결정
+        public bool IsUse { get; set; } = true;
+        //검사가 완료되었는지를 판단
+        public bool IsInspected { get; set; } = false;
 
-        public Rect TeachRect { get; set; } //학습할 영역 정보 저장 변수
+        //#8_INSPECT_BINARY#1 검사할 영역 정보를 저장하는 변수
+        public Rect TeachRect { get; set; }
+        public Rect InspRect { get; set; }
 
-        public Rect InspRect { get; set; } //검사할 영역 정보 저장 변수
+        public eImageChannel ImageChannel { get; set; } = eImageChannel.Gray;
 
-        protected Mat _srcImage = null; //런타임 검사에 사용할 원본 이미지 저장 변수
-        public List<string> ResultString { get; set; }= new List<string>(); //검사 결과 문자열 저장 변수
+        //검사할 원본 이미지
+        protected Mat _srcImage = null;
 
-        public bool IsDefect { get; set; } //검사 결과 불량 유무 저장 변수
+        //검사 결과 정보
+        public List<string> ResultString { get; set; } = new List<string>();
 
-        public abstract InspAlgorithm Clone(); //검사 알고리즘 복제 함수
-        public abstract bool CopyFrom(InspAlgorithm sourceAlgo); 
+        //불량 여부
+        public bool IsDefect { get; set; }
 
-        protected void CopyBaseTo(InspAlgorithm target) //검사 알고리즘 기본 속성 복사 함수
+        //#10_INSPWINDOW#2 InspWindow 복사를 위한 InspAlgorithm 복사 함수
+        public abstract InspAlgorithm Clone();
+        public abstract bool CopyFrom(InspAlgorithm sourceAlgo);
+
+        /// <summary>자식 클래스에서 공통 필드를 복사하려고 부르는 헬퍼</summary>
+        protected void CopyBaseTo(InspAlgorithm target)
         {
             target.InspectType = this.InspectType;
             target.IsUse = this.IsUse;
             target.IsInspected = this.IsInspected;
             target.TeachRect = this.TeachRect;
             target.InspRect = this.InspRect;
-            //_srcImage 는 런타임 검사용이라 복사하지 않음
+            target.ImageChannel = this.ImageChannel;
+            // NOTE: _srcImage 는 런타임 검사용이라 복사하지 않음
         }
 
-        public virtual void SetInspData(Mat srcImage) { _srcImage = srcImage; } //런타임 검사에 사용할 원본 이미지 설정 함수
+        //#8_INSPECT_BINARY#2 검사할 이미지 정보 저장
+        public virtual void SetInspData(Mat srcImage)
+        {
+            _srcImage = srcImage;
+        }
 
-        public abstract bool DoInspect(); //검사 수행 함수
+        //검사 함수로, 상속 받는 클래스는 필수로 구현해야한다.
+        public abstract bool DoInspect();
 
-        public virtual void ResetResult() //검사 결과 초기화 함수
+        //검사 결과 정보 초기화
+        public virtual void ResetResult()
         {
             IsInspected = false;
             IsDefect = false;
             ResultString.Clear();
         }
 
-        public virtual int GetResultRect(out List<DrawInspectInfo> resultArea) //검사 결과 영역 정보 반환 함수
+        //#8_INSPECT_BINARY#3 검사 결과가 Rect정보로 출력이 가능하다면, 이 함수를 상속 받아서, 정보 반환
+        public virtual int GetResultRect(out List<DrawInspectInfo> resultArea)
         {
             resultArea = null;
             return 0;

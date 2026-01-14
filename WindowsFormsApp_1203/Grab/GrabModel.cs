@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JYVision.Util;
 using MvCameraControl;
 
 namespace JYVision.Grab
@@ -51,21 +52,25 @@ namespace JYVision.Grab
 
         protected GrabUserBuffer[] _userImageBuffer = null;
         public int BufferIndex { get; set; } = 0;
-        internal bool HardwareTrigger { get; set; } = false;
-        internal bool IncreaseBufferIndex { get; set; } = false;
 
         protected string _strIpAddr = "";
 
+        internal bool HardwareTrigger { get; set; } = false;
+        internal bool IncreaseBufferIndex { get; set; } = false;
+
         protected AutoResetEvent _grabDoneEvent = new AutoResetEvent(false);
+
         internal abstract bool Create(string strIpAddr = null);
-       
-        internal abstract bool Grab(int bufferIndex, bool waitDone);
+
+        internal abstract bool Grab(int bufferIndex, bool waitDone = true);
 
         internal abstract bool Close();
 
         internal abstract bool Open();
+
         internal virtual bool Reconnect() { return true; }
-        internal abstract bool GetPixelBpp(out int pixelBpp); //카메라의 정보
+
+        internal abstract bool GetPixelBpp(out int pixelBpp);
 
         internal abstract bool SetExposureTime(long exposure);
 
@@ -75,12 +80,16 @@ namespace JYVision.Grab
 
         internal abstract bool GetGain(out float gain);
 
-        internal abstract bool GetResolution(out int width, out int height, out int stride);  //카메라 해상도      
+        internal abstract bool GetResolution(out int width, out int height, out int stride);
 
         internal virtual bool SetTriggerMode(bool hardwareTrigger) { return true; }
 
+        internal virtual bool SetWhiteBalance(bool auto, float redGain = 1.0f, float blueGain = 1.0f) { return true; }
+
         internal bool InitGrab()
         {
+            SLogger.Write("Grab 초기화 시작!");
+
             if (!Create())
                 return false;
 
@@ -90,8 +99,10 @@ namespace JYVision.Grab
                     return false;
             }
 
+            SLogger.Write("Grab 초기화 성공!");
             return true;
         }
+
         internal bool InitBuffer(int bufferCount = 1)
         {
             if (bufferCount < 1) return false;

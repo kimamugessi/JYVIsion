@@ -47,7 +47,7 @@
             this.cbAIModelType.Name = "cbAIModelType";
             this.cbAIModelType.Size = new System.Drawing.Size(348, 26);
             this.cbAIModelType.TabIndex = 1;
-            this.cbAIModelType.SelectedIndexChanged += new System.EventHandler(this.cbAIModelType_SelectedIndexChanged_1);
+            this.cbAIModelType.SelectedIndexChanged += new System.EventHandler(this.cbAIModelType_SelectedIndexChanged);
             // 
             // txtAIModelPath
             // 
@@ -67,6 +67,7 @@
             this.btnInspAI.TabIndex = 6;
             this.btnInspAI.Text = "AI 검사";
             this.btnInspAI.UseVisualStyleBackColor = true;
+            this.btnInspAI.Click += new System.EventHandler(this.btnInspAI_Click);
             // 
             // btnLoadModel
             // 
@@ -77,6 +78,7 @@
             this.btnLoadModel.TabIndex = 5;
             this.btnLoadModel.Text = "모델 로딩";
             this.btnLoadModel.UseVisualStyleBackColor = true;
+            this.btnLoadModel.Click += new System.EventHandler(this.btnLoadModel_Click);
             // 
             // btnSelAIModel
             // 
@@ -87,6 +89,7 @@
             this.btnSelAIModel.TabIndex = 4;
             this.btnSelAIModel.Text = "AI모델 선택";
             this.btnSelAIModel.UseVisualStyleBackColor = true;
+            this.btnSelAIModel.Click += new System.EventHandler(this.btnSelAIModel_Click);
             // 
             // AIModuleProp
             // 

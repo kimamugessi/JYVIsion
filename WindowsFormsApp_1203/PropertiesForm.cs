@@ -16,12 +16,6 @@ using WeifenLuo.WinFormsUI.Docking;
 
 namespace JYVision
 {
-    public enum PropertyType    //속성창에서 사용할 타입 선언
-    {
-        Binary,
-        Filter,
-        AIModule
-    }
     public partial class PropertiesForm : DockContent
     {
         //속성탭을 관리하기 위한 딕셔너리
@@ -29,14 +23,10 @@ namespace JYVision
         public PropertiesForm()
         {
             InitializeComponent();
-
-            LoadOptionControl(PropertyType.Filter); //속성 속 텝들 초기화
-            LoadOptionControl(PropertyType.Binary);
-            LoadOptionControl(PropertyType.AIModule);
         }
-        private void LoadOptionControl(PropertyType propType)   //속성 탭이 이미 있다면 그것을 반환(1), 없다면 새로 생성(2)
+        private void LoadOptionControl(InspectType inspType)   //속성 탭이 이미 있다면 그것을 반환(1), 없다면 새로 생성(2)
         {
-            string tabName = propType.ToString();
+            string tabName = inspType.ToString();
 
             foreach (TabPage tabPage in tabPropControl.TabPages)    //(1)
             {
@@ -49,7 +39,7 @@ namespace JYVision
                 return;
             }
 
-            UserControl _inspProp = CreateUserControl(propType);    //새 UserControl 생성
+            UserControl _inspProp = CreateUserControl(inspType);    //새 UserControl 생성
             if (_inspProp == null) return;
 
             TabPage newTab = new TabPage(tabName)     //(2)
@@ -64,23 +54,28 @@ namespace JYVision
             _allTabs[tabName] = newTab;
         }
 
-        private UserControl CreateUserControl(PropertyType propType)    //속성 탭 생성하는 매서드
+        private UserControl CreateUserControl(InspectType inspPropType)    //속성 탭 생성하는 매서드
         {
             UserControl curProp = null;
-            switch (propType)
+            switch (inspPropType)
             {
-                case PropertyType.Binary:
+                case InspectType.InspBinary:
                     BinaryProp blobProp = new BinaryProp();
 
                     blobProp.RangeChanged += RangeSlider_RangeChaged;
-                    blobProp.PropertyChanged += PropertyChanged;
+                    //blobProp.PropertyChanged += PropertyChanged;
                     curProp = blobProp;
                     break;
-                case PropertyType.Filter:
+                case InspectType.InspMatch:
+                    MatchInspProp matchProp = new MatchInspProp();
+                    matchProp.PropertyChanged += PropertyChanged;
+                    curProp = matchProp;
+                    break;
+                case InspectType.InspFilter:
                     ImageFilterProp filterProp = new ImageFilterProp();
                     curProp = filterProp;
                     break;
-                case PropertyType.AIModule:
+                case InspectType.InspAIModule:
                     AIModuleProp aiModuleProp = new AIModuleProp();
                     curProp = aiModuleProp;
                     break;
@@ -89,6 +84,14 @@ namespace JYVision
                     return null;
             }
             return curProp;
+        }
+
+        public void ShowProperty(InspWindow window)
+        {
+            foreach(InspAlgorithm algo in window.AlgorithmList)
+            {
+                LoadOptionControl(algo.InspectType);
+            }
         }
 
         public void ResetProperty() {  tabPropControl.TabPages.Clear(); }
@@ -107,6 +110,16 @@ namespace JYVision
 
                         binaryProp.SetAlgorithm(blobAlgo);
                     }
+                    else if (uc is MatchInspProp matchProp)
+                    {
+                        MatchAlgorithm matchAlgo = (MatchAlgorithm)window.FindInspAlgorithm(InspectType.InspMatch);
+                        if (matchAlgo is null)
+                            continue;
+
+                        window.PatternLearn();
+
+                        matchProp.SetAlgorithm(matchAlgo);
+                    }
                 }
             }
         }
@@ -115,9 +128,10 @@ namespace JYVision
             int lowerValue = e.LowerValue;
             int upperValue = e.UpperValue;
             bool invert = e.Invert;
-            ShowBinaryMode showBinaryMode = e.ShowBinMode;
-            Global.Inst.InspStage.PreView?.SetBinary(lowerValue, upperValue, invert, showBinaryMode);
+            ShowBinaryMode showBinMode = e.ShowBinMode;
+            Global.Inst.InspStage.PreView?.SetBinary(lowerValue, upperValue, invert, showBinMode);
         }
+
         private void PropertyChanged(object sender, EventArgs e)
         {
             Global.Inst.InspStage.RedrawMainView();

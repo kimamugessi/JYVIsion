@@ -1,4 +1,5 @@
-﻿using JYVision.Core;
+﻿using Common.Util.Helpers;
+using JYVision.Core;
 using JYVision.Teach;
 using System;
 using System.Collections.Generic;
@@ -66,6 +67,45 @@ namespace JYVision.Teach
             ModelPath = path;
             ModelName = modelName;
             ModelInfo = modelInfo;
+        }
+        public Model Load(string path)
+        {
+            Model model = XmlHelper.LoadXml<Model>(path);
+            if (model == null)
+                return null;
+
+            foreach (var window in model.InspWindowList)
+            {
+                window.LoadInspWindow(model);
+            }
+
+            return model;
+        }
+
+        //모델 저장함수
+        public void Save()
+        {
+            if (ModelPath == "")
+                return;
+
+            XmlHelper.SaveXml(ModelPath, this);
+
+            foreach (var window in InspWindowList)
+            {
+                window.SaveInspWindow(this);
+            }
+        }
+
+        //모델 다른 이름으로 저장함수
+        public void SaveAs(string filePath)
+        {
+            string fileName = Path.GetFileName(filePath);
+            if (Directory.Exists(filePath) == false)
+            {
+                ModelPath = Path.Combine(filePath, fileName + ".xml");
+                ModelName = fileName;
+                Save();
+            }
         }
     }
 }

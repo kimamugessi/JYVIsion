@@ -13,46 +13,55 @@ namespace JYVision.Core
 {
     public class PreviewImage
     {
-        private Mat _originalImage=null;
-        private Mat _previewimage=null;
+        private Mat _orinalImage = null;
+        private Mat _previewImage = null;
 
         private InspWindow _inspWindow = null;
         private bool _usePreview = true;
 
         public void SetImage(Mat image)
         {
-            _originalImage = image;
-            _previewimage = new Mat();
+            _orinalImage = image;
+            _previewImage = new Mat();
         }
 
-        public void SetInspWindow(InspWindow inspWindow)    /*검사 윈도우 설정*/
+        //#10_INSPWINDOW#6 프리뷰를 위한 InspWindow 설정
+        public void SetInspWindow(InspWindow inspwindow)
         {
-            _inspWindow = inspWindow;
+            _inspWindow = inspwindow;
         }
 
-        public void SetBinary(int lowerValue, int upperValue, bool invert, ShowBinaryMode showBinaryMode)
+        //ShowBinaryMode에 따라 이진화 프리뷰 진행
+        public void SetBinary(int lowerValue, int upperValue, bool invert, ShowBinaryMode showBinMode)
         {
-            if(_usePreview==false) return;
-            if(_originalImage == null) return;
+            if (_usePreview == false)
+                return;
 
-            var cameraForm=MainForm.GetDockForm<CameraForm>();
-            if(cameraForm == null) return;
+            if (_orinalImage == null)
+                return;
+
+            var cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm == null)
+                return;
 
             Bitmap bmpImage;
-            if (showBinaryMode == ShowBinaryMode.ShowBinaryNone)
+            if (showBinMode == ShowBinaryMode.ShowBinaryNone)
             {
-                bmpImage=BitmapConverter.ToBitmap(_originalImage);
+                bmpImage = BitmapConverter.ToBitmap(_orinalImage);
                 cameraForm.UpdateDisplay(bmpImage);
                 return;
             }
-            Rect windowArea = new Rect(0,0,_originalImage.Width,_originalImage.Height);
 
-            if (_inspWindow != null) //검사 윈도우가 설정되어 있다면 해당 영역으로 설정
+            Rect windowArea = new Rect(0, 0, _orinalImage.Width, _orinalImage.Height);
+
+            //#10_INSPWINDOW#7 InspWindow가 있다면 프리뷰 설정 영역을 ROI로 변경
+            if (_inspWindow != null)
             {
-                windowArea = _inspWindow.WindowArea; //검사 윈도우 영역
+                windowArea = _inspWindow.WindowArea;
             }
 
-            Mat orgRoi = _originalImage[windowArea];
+            Mat orgRoi = _orinalImage[windowArea];
+
             Mat grayImage = new Mat();
             if (orgRoi.Type() == MatType.CV_8UC3)
                 Cv2.CvtColor(orgRoi, grayImage, ColorConversionCodes.BGR2GRAY);
@@ -65,57 +74,62 @@ namespace JYVision.Core
             if (invert)
                 binaryMask = ~binaryMask;
 
-            Mat fullBinaryMask = Mat.Zeros(_originalImage.Size(), MatType.CV_8UC1);
+            // binaryMask는 ROI 사이즈이므로 fullBinaryMask로 확장
+            Mat fullBinaryMask = Mat.Zeros(_orinalImage.Size(), MatType.CV_8UC1);
             binaryMask.CopyTo(new Mat(fullBinaryMask, windowArea));
 
-            if (showBinaryMode == ShowBinaryMode.ShowBinaryOnly)
+            if (showBinMode == ShowBinaryMode.ShowBinaryOnly)
             {
                 if (orgRoi.Type() == MatType.CV_8UC3)
                 {
                     Mat colorBinary = new Mat();
                     Cv2.CvtColor(binaryMask, colorBinary, ColorConversionCodes.GRAY2BGR);
-                    _previewimage = _originalImage.Clone();
-                    colorBinary.CopyTo(new Mat(_previewimage, windowArea));
+                    _previewImage = _orinalImage.Clone();
+                    colorBinary.CopyTo(new Mat(_previewImage, windowArea));
                 }
                 else
                 {
-                    _previewimage = _originalImage.Clone();
-                    binaryMask.CopyTo(new Mat(_previewimage, windowArea));
+                    _previewImage = _orinalImage.Clone();
+                    binaryMask.CopyTo(new Mat(_previewImage, windowArea));
                 }
 
-                bmpImage = BitmapConverter.ToBitmap(_previewimage);
+                bmpImage = BitmapConverter.ToBitmap(_previewImage);
                 cameraForm.UpdateDisplay(bmpImage);
                 return;
             }
+
             Scalar highlightColor;
-            if (showBinaryMode == ShowBinaryMode.ShowBinaryHighlightRed)
+            if (showBinMode == ShowBinaryMode.ShowBinaryHighlightRed)
                 highlightColor = new Scalar(0, 0, 255);
-            else if (showBinaryMode == ShowBinaryMode.ShowBinaryHighlightGreen)
+            else if (showBinMode == ShowBinaryMode.ShowBinaryHighlightGreen)
                 highlightColor = new Scalar(0, 255, 0);
-            else
+            else //(showBinMode == ShowBinaryMode.ShowBinaryHighlightBlue)
                 highlightColor = new Scalar(255, 0, 0);
 
+            // 원본 이미지 복사본을 만들어 이진화된 부분에만 색을 덧씌우기
             Mat overlayImage;
-            if (_originalImage.Type() == MatType.CV_8UC1)
+            if (_orinalImage.Type() == MatType.CV_8UC1)
             {
                 overlayImage = new Mat();
-                Cv2.CvtColor(_originalImage, overlayImage, ColorConversionCodes.GRAY2BGR);
+                Cv2.CvtColor(_orinalImage, overlayImage, ColorConversionCodes.GRAY2BGR);
 
                 Mat colorOrinal = overlayImage.Clone();
 
-                overlayImage.SetTo(highlightColor, fullBinaryMask);
+                overlayImage.SetTo(highlightColor, fullBinaryMask); // 빨간색으로 마스킹
 
-                Cv2.AddWeighted(colorOrinal, 0.7, overlayImage, 0.3, 0, _previewimage);
+                // 원본과 합성 (투명도 적용)
+                Cv2.AddWeighted(colorOrinal, 0.7, overlayImage, 0.3, 0, _previewImage);
             }
             else
             {
-                overlayImage = _originalImage.Clone();
-                overlayImage.SetTo(highlightColor, fullBinaryMask); 
+                overlayImage = _orinalImage.Clone();
+                overlayImage.SetTo(highlightColor, fullBinaryMask); // 빨간색으로 마스킹
 
-                Cv2.AddWeighted(_originalImage, 0.7, overlayImage, 0.3, 0, _previewimage);
+                // 원본과 합성 (투명도 적용)
+                Cv2.AddWeighted(_orinalImage, 0.7, overlayImage, 0.3, 0, _previewImage);
             }
 
-            bmpImage = BitmapConverter.ToBitmap(_previewimage);
+            bmpImage = BitmapConverter.ToBitmap(_previewImage);
             cameraForm.UpdateDisplay(bmpImage);
         }
     }

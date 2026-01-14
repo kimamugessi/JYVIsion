@@ -30,54 +30,88 @@ namespace JYVision.UIControl
         DeleteList,
         UpdateImage
     }
-    public partial class ImageViewCtrl : UserControl
+
+    //#13_INSP_RESULT#3 검사 양불판정 갯수를 화면에 표시하기 위한 구조체
+    public struct InspectResultCount
     {
+        public int Total { get; set; }
+        public int OK { get; set; }
+        public int NG { get; set; }
+
+        public InspectResultCount(int _totalCount, int _okCount, int _ngCount)
+        {
+            Total = _totalCount;
+            OK = _okCount;
+            NG = _ngCount;
+        }
+    }
+
+    public partial class ImageViewCtrl: UserControl
+    {
+        //ROI를 추가,수정,삭제 등으로 변경 시, 이벤트 발생
         public event EventHandler<DiagramEntityEventArgs> DiagramEntityEvent;
 
         private bool _isInitialized = false;
 
-        private Bitmap _bitmapImage = null; //로드된 이미지
+        // 현재 로드된 이미지
+        private Bitmap _bitmapImage = null;
 
-        private Bitmap Canvas = null;    //화면 깜빡이는 현상 없애기 위함, 숨겨진 상태에서 그리고 나중에 보여지는 기능
+        // 더블 버퍼링을 위한 캔버스
+        // 더블버퍼링 : 화면 깜빡임을 방지하고 부드러운 펜더링위해 사용
+        private Bitmap Canvas = null;
 
-        private RectangleF ImageRect = new RectangleF(0, 0, 0, 0);  //표시 이미지 크기 및 위치
+        // 화면에 표시될 이미지의 크기 및 위치
+        // 부동 소수점(float) 좌표를 사용하는 사각형 구조체
+        private RectangleF ImageRect = new RectangleF(0, 0, 0, 0);
 
-        private float _curZoom = 1.0f;  //배율
-        private float _zoomFactor = 1.1f;   //확대,축소 변경 단위
-        private float MinZoom = 1.0f;   //Zoom 최소 크기
-        private float MaxZoom = 100.0f; //Zoom 최대 크기
+        // 현재 줌 배율
+        private float _curZoom = 1.0f;
+        // 줌 배율 변경 시, 확대/축소 단위
+        private float _zoomFactor = 1.1f;
+
+        // 최소 및 최대 줌 제한 값
+        private float MinZoom = 1.0f;
+        private const float MaxZoom = 100.0f;
 
         private List<DrawInspectInfo> _rectInfos = new List<DrawInspectInfo>();
 
-        private Point _roiStart = Point.Empty; //ROI 시작점(좌클릭을 누른 위치)
-        private Rectangle _roiRect = Rectangle.Empty; //ROI 사각형
-        private bool _isSelectingRoi = false; //ROI 선택중 여부
-        private bool _isResizingRoi = false; //ROI 크기 조절중 여부
-        private bool _isMovingRoi = false; //ROI 이동중 여부
-        private Point _resizeStart = Point.Empty; //ROI 크기 조절 시작점
-        private Point _moveStart = Point.Empty; //ROI 이동 시작점
-        private int _resizeDirection = -1; //ROI 크기 조절 방향?
-        private const int _ResizeHandleSize = 10; //ROI 크기 조절 꼭짓점 크기
+        //#13_INSP_RESULT#4 검사 양불 판정 갯수를 화면에 표시하기 위한 변수
+        private InspectResultCount _inspectResultCount = new InspectResultCount();
 
-        private InspWindowType _newRoiType = InspWindowType.None; //새로운 ROI 타입
+        //#10_INSPWINDOW#15 ROI 편집에 필요한 변수 선언
+        private Point _roiStart = Point.Empty;
+        private Rectangle _roiRect = Rectangle.Empty;
+        private bool _isSelectingRoi = false;
+        private bool _isResizingRoi = false;
+        private bool _isMovingRoi = false;
+        private Point _resizeStart = Point.Empty;
+        private Point _moveStart = Point.Empty;
+        private int _resizeDirection = -1;
+        private const int _ResizeHandleSize = 10;
 
-        private List<DiagramEntity> _diagramEntityList = new List<DiagramEntity>(); //도형 엔티티 리스트
+        //새로 추가할 ROI 타입
+        private InspWindowType _newRoiType = InspWindowType.None;
 
-        private List<DiagramEntity> _multiSelectedEntities = new List<DiagramEntity>(); //다중 선택된 도형 엔티티 리스트
-        private List<DiagramEntity> _copyBuffer = new List<DiagramEntity>(); //복사된 도형 엔티티 리스트
-        private Point _mousePos; //마우스 위치
+        //여러개 ROI를 관리하기 위한 리스트
+        private List<DiagramEntity> _diagramEntityList = new List<DiagramEntity>();
 
-        private DiagramEntity _selEntity; //선택된 도형 엔티티
-        private Color _selColor = Color.White; //선택된 도형 색상
+        //현재 선택된 ROI 리스트
+        private List<DiagramEntity> _multiSelectedEntities = new List<DiagramEntity>();
+        private List<DiagramEntity> _copyBuffer = new List<DiagramEntity>();
+        private Point _mousePos;
 
-        private Rectangle _selectionBox = Rectangle.Empty; //선택 박스 영역
-        private bool _isBoxSelecting = false; //박스 선택중 여부
-        private bool _isCtrlPressed = false; //Ctrl 키 눌림 여부
-        private Rectangle _screenSelectedRect = Rectangle.Empty; //화면에서 선택된 사각형 영역
+        private DiagramEntity _selEntity;
+        private Color _selColor = Color.White;
 
-        private Size _extSize = new Size(0, 0); //확장 크기
+        private Rectangle _selectionBox = Rectangle.Empty;
+        private bool _isBoxSelecting = false;
+        private bool _isCtrlPressed = false;
+        private Rectangle _screenSelectedRect = Rectangle.Empty;
 
-        private ContextMenuStrip _contextMenu; //컨텍스트 메뉴
+        private Size _extSize = new Size(0, 0);
+        
+        //팝업 메뉴
+        private ContextMenuStrip _contextMenu;
 
         public ImageViewCtrl()
         {
@@ -124,15 +158,17 @@ namespace JYVision.UIControl
             _selColor = GetWindowColor(inspWindowType);
             Cursor = Cursors.Cross;
         }
-        public Bitmap GetCurBitmap()
+
+        //줌에 따른 좌표 계산 기능 수정 
+        private void ResizeCanvas()
         {
-            return _bitmapImage;
-        }
-        private void ResizeCanvas() //도킹펜이 변할때마다 이미지 사이즈 재계산을 위함
-        {
-            if (Width <= 0 || Height <= 0 || _bitmapImage == null) return;
+            if (Width <= 0 || Height <= 0 || _bitmapImage == null)
+                return;
+
+            // 캔버스를 UserControl 크기만큼 생성
             Canvas = new Bitmap(Width, Height);
-            if (Canvas == null) return;
+            if (Canvas == null)
+                return;
 
             float virtualWidth = _bitmapImage.Width * _curZoom;
             float virtualHeight = _bitmapImage.Height * _curZoom;
@@ -295,6 +331,12 @@ namespace JYVision.UIControl
                 }
             }
 
+            if (_multiSelectedEntities.Count <= 1 && _selEntity != null)
+            {
+                //#11_MATCHING#8 패턴매칭할 영역 표시
+                DrawInspParam(g, _selEntity.LinkedWindow);
+            }
+
             if (_isBoxSelecting && !_selectionBox.IsEmpty) //박스 선택중일때
             {
                 using (Pen pen = new Pen(Color.LightSkyBlue, 3))
@@ -366,7 +408,19 @@ namespace JYVision.UIControl
                     }
                 }
             }
+
+            //#13_INSP_RESULT#5 검사 양불판정 갯수 화면에 표시
+            if (_inspectResultCount.Total > 0)
+            {
+                string resultText = $"Total: {_inspectResultCount.Total}\r\nOK: {_inspectResultCount.OK}\r\nNG: {_inspectResultCount.NG}";
+
+                float fontSize = 12.0f;
+                Color resultColor = Color.FromArgb(255, 255, 255);
+                PointF textPos = new PointF(Width - 80, 10);
+                DrawText(g, resultText, textPos, fontSize, resultColor);
+            }
         }
+
         private void DrawText(Graphics g, string text, PointF position, float fontSize, Color color)
         {
             using (Font font = new Font("Arial", fontSize, FontStyle.Bold))
@@ -384,6 +438,43 @@ namespace JYVision.UIControl
                 }
 
                 g.DrawString(text, font, textBrush, position);
+            }
+        }
+        public void UpdateInspParam()
+        {
+            _extSize.Width = _extSize.Height = 0;
+
+            if (_selEntity is null)
+                return;
+
+            InspWindow window = _selEntity.LinkedWindow;
+            if (window is null)
+                return;
+
+            MatchAlgorithm matchAlgo = (MatchAlgorithm)window.FindInspAlgorithm(InspectType.InspMatch);
+            if (matchAlgo != null)
+            {
+                _extSize.Width = matchAlgo.ExtSize.Width;
+                _extSize.Height = matchAlgo.ExtSize.Height;
+            }
+        }
+
+        private void DrawInspParam(Graphics g, InspWindow window)
+        {
+            if (_extSize.Width > 0 || _extSize.Height > 0)
+            {
+                Rectangle extArea = new Rectangle(_roiRect.Left - _extSize.Width,
+                    _roiRect.Top - _extSize.Height,
+                    _roiRect.Width + _extSize.Width * 2,
+                    _roiRect.Height + _extSize.Height * 2);
+                Rectangle screenRect = VirtualToScreen(extArea);
+
+                using (Pen pen = new Pen(Color.White, 2))
+                {
+                    pen.DashStyle = DashStyle.Dot;
+                    pen.Width = 2;
+                    g.DrawRectangle(pen, screenRect);
+                }
             }
         }
         private void ImageViewCtrl_MouseDown(object sender, MouseEventArgs e)
@@ -449,6 +540,8 @@ namespace JYVision.UIControl
                         _roiRect = entity.EntityROI;
                         _isMovingRoi = true;
                         _moveStart = e.Location;
+
+                        UpdateInspParam();
                         break;
                     }
 
@@ -854,6 +947,91 @@ namespace JYVision.UIControl
             Invalidate();
         }
 
+        public void SetInspResultCount(InspectResultCount inspectResultCount)
+        {
+            _inspectResultCount = inspectResultCount;
+        }
+
+        //#13_INSP_RESULT#9 키보드 이벤트 받기 
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            _isCtrlPressed = keyData == Keys.Control;
+
+            if (keyData == (Keys.Control | Keys.C))
+            {
+                CopySelectedROIs();
+            }
+            else if (keyData == (Keys.Control | Keys.V))
+            {
+                PasteROIsAt();
+            }
+            else
+            {
+                switch (keyData)
+                {
+                    case Keys.Delete:
+                        {
+                            if (_selEntity != null)
+                            {
+                                DeleteSelEntity();
+                            }
+                        }
+                        break;
+                    case Keys.Enter:
+                        {
+                            InspWindow selWindow = null;
+                            if (_selEntity != null)
+                                selWindow = _selEntity.LinkedWindow;
+
+                            DiagramEntityEvent?.Invoke(this, new DiagramEntityEventArgs(EntityActionType.Inspect, selWindow));
+                        }
+                        break;
+                }
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+        // ─── 복사(Ctrl+C) ----------------------------------------------------------
+        private void CopySelectedROIs() // #ROI COPYPASTE#
+        {
+            _copyBuffer.Clear();
+            for (int i = 0; i < _multiSelectedEntities.Count; i++)
+            {
+                _copyBuffer.Add(_multiSelectedEntities[i]);
+            }
+        }
+
+        // ─── 붙여넣기(Ctrl+V) ------------------------------------------------------
+        private void PasteROIsAt() // #ROI COPYPASTE#
+        {
+            if (_copyBuffer.Count == 0)
+                return;
+
+            // ① 기준점(마우스)을 Virtual 좌표로 변환
+            PointF virtBase = ScreenToVirtual(_mousePos);
+
+            foreach (var entity in _copyBuffer)
+            {
+                int dx = (int)(virtBase.X - entity.EntityROI.Left + 0.5f);
+                int dy = (int)(virtBase.Y - entity.EntityROI.Top + 0.5f);
+                var newRect = entity.EntityROI;
+
+                DiagramEntityEvent?.Invoke(this,
+                    new DiagramEntityEventArgs(EntityActionType.Copy, entity.LinkedWindow,
+                                                entity.LinkedWindow?.InspWindowType ?? InspWindowType.None,
+                                                newRect, new Point(dx, dy)));
+            }
+            Invalidate();
+        }
+
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Control)
+                _isCtrlPressed = false;
+
+            base.OnKeyUp(e);
+        }
+
         public void ResetEntity()
         {
             _rectInfos.Clear();
@@ -935,5 +1113,38 @@ namespace JYVision.UIControl
             }
         }
     }
+    #region EventArgs
+    public class DiagramEntityEventArgs : EventArgs
+    {
+        public EntityActionType ActionType { get; private set; }
+        public InspWindow InspWindow { get; private set; }
+        public InspWindowType WindowType { get; private set; }
+        public List<InspWindow> InspWindowList { get; private set; }
+        public OpenCvSharp.Rect Rect { get; private set; }
+        public OpenCvSharp.Point OffsetMove { get; private set; }
+        public DiagramEntityEventArgs(EntityActionType actionType, InspWindow inspWindow)
+        {
+            ActionType = actionType;
+            InspWindow = inspWindow;
+        }
 
+        public DiagramEntityEventArgs(EntityActionType actionType, InspWindow inspWindow, InspWindowType windowType, Rectangle rect, Point offsetMove)
+        {
+            ActionType = actionType;
+            InspWindow = inspWindow;
+            WindowType = windowType;
+            Rect = new OpenCvSharp.Rect(rect.X, rect.Y, rect.Width, rect.Height);
+            OffsetMove = new OpenCvSharp.Point(offsetMove.X, offsetMove.Y);
+        }
+
+        public DiagramEntityEventArgs(EntityActionType actionType, List<InspWindow> inspWindowList, InspWindowType windowType = InspWindowType.None)
+        {
+            ActionType = actionType;
+            InspWindow = null;
+            InspWindowList = inspWindowList;
+            WindowType = windowType;
+        }
+    }
+
+    #endregion
 }

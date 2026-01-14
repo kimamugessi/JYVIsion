@@ -82,19 +82,17 @@ namespace JYVision.Property
                 return;
             }
 
-            Bitmap bitmap = Global.Inst.InspStage.GetCurrentImage();
+            Bitmap bitmap = Global.Inst.InspStage.GetBitmap();
             if (bitmap == null)
             {
                 MessageBox.Show("현재 이미지가 없습니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-
             _saigeAI.InspAIModule(bitmap);
 
             Bitmap resultImage = _saigeAI.GetResultImage();
 
             Global.Inst.InspStage.UpdateDisplay(resultImage);
-
         }
 
         private void cbAIModelType_SelectedIndexChanged(object sender, EventArgs e)
@@ -108,17 +106,6 @@ namespace JYVision.Property
             }
 
             _engineType = engineType;
-        }
-
-        private void cbAIModelType_SelectedIndexChanged_1(object sender, EventArgs e)
-        {
-            AIEngineType engineType =(AIEngineType)cbAIModelType.SelectedItem;
-            if (engineType != _engineType)
-            {
-                if (_saigeAI != null)
-                    _saigeAI.Dispose();
-            }
-            _engineType=engineType;
         }
     }
 }

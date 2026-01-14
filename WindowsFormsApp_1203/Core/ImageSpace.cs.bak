@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Drawing.Imaging;
 using System.Drawing;
 using System.Linq;
@@ -13,12 +14,13 @@ namespace JYVision.Core
 {
     public enum eImageChannel : int
     {
+        None = -1,
         Color,
         Gray,
         Red,
         Green,
         Blue,
-        ChannelCount = 5,
+        ChannelCount,
     }
 
     //검사와 관련된 이미지 버퍼를 관리하는 클래스
@@ -433,10 +435,10 @@ namespace JYVision.Core
 
             var original = _imageInfo[index].ToBitmap();
 
-            //original.Split(_imageByChannel[index][eImageChannel.Red].ImageData,
-            //    _imageByChannel[index][eImageChannel.Green].ImageData,
-            //    _imageByChannel[index][eImageChannel.Blue].ImageData,
-            //    _imageByChannel[index][eImageChannel.Gray].ImageData);
+            original.Split(_imageByChannel[index][eImageChannel.Red].ImageData,
+                _imageByChannel[index][eImageChannel.Green].ImageData,
+                _imageByChannel[index][eImageChannel.Blue].ImageData,
+                _imageByChannel[index][eImageChannel.Gray].ImageData);
         }
 
         #region Disposable
