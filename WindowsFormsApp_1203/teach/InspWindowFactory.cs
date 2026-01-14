@@ -68,6 +68,10 @@ namespace JYVision.Teach
                     inspWindow.AddInspAlgorithm(InspectType.InspMatch);
                     inspWindow.AddInspAlgorithm(InspectType.InspBinary);
                     break;
+                case InspWindowType.ID:
+                    inspWindow.AddInspAlgorithm(InspectType.InspMatch);
+                    break;
+
             }
 
             return true;

@@ -38,6 +38,8 @@ namespace JYVision
             LoadDockingWindows();
 
             Global.Inst.Initialize();
+
+            LoadSetting();
         }
 
         private void LoadDockingWindows()
@@ -65,6 +67,10 @@ namespace JYVision
             var logForm = new LogForm();
             logForm.Show(propForm.Pane, DockAlignment.Bottom, 0.3);
 
+        }
+        private void LoadSetting()
+        {
+            cycleModeMenuItem.Checked = SettingXml.Inst.CycleMode;
         }
         //시범으로 작성
         public static T GetDockForm<T>() where T : DockContent
@@ -172,6 +178,12 @@ namespace JYVision
                     Global.Inst.InspStage.SaveModel(filePath);
                 }
             }
+        }
+
+        private void cycleModeMenuItem_Click(object sender, EventArgs e)
+        {
+            bool isChecked = cycleModeMenuItem.Checked;
+            SettingXml.Inst.CycleMode = isChecked;
         }
     }
 }

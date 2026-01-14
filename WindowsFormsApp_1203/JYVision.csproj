@@ -130,6 +130,8 @@
     <Compile Include="Grab\GrabModel.cs" />
     <Compile Include="Grab\HikRobotCam.cs" />
     <Compile Include="Grab\WebCam.cs" />
+    <Compile Include="Inspect\InspectBoard.cs" />
+    <Compile Include="Inspect\InspWorker.cs" />
     <Compile Include="ModelTreeForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -248,6 +250,8 @@
       <DependentUpon>RangeTrackbar.cs</DependentUpon>
     </Compile>
     <Compile Include="Util\BitmapExtension.cs" />
+    <Compile Include="Util\ImageFileSorter.cs" />
+    <Compile Include="Util\ImageLoader.cs" />
     <Compile Include="Util\SLogger.cs" />
     <Compile Include="Util\XmlHelper.cs" />
     <EmbeddedResource Include="CameraForm.resx">
@@ -283,6 +287,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Property\BinaryProp.resx">
       <DependentUpon>BinaryProp.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Property\ImageFilterProp.resx">
+      <DependentUpon>ImageFilterProp.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Property\MatchInspProp.resx">
       <DependentUpon>MatchInspProp.cs</DependentUpon>

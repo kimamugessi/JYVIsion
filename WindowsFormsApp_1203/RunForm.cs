@@ -1,4 +1,5 @@
 ﻿using JYVision.Core;
+using JYVision.Setting;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -26,7 +27,18 @@ namespace JYVision
         }
         private void btnStart_Click(object sender, EventArgs e)
         {
-            Global.Inst.InspStage.TryInspection();
+            string serialID = $"{DateTime.Now:MM-dd HH:mm:ss}";
+            Global.Inst.InspStage.InspectReady("LOT_NUMBER", serialID);
+
+            if (SettingXml.Inst.CamType == Grab.CameraType.None)
+            {
+                bool cycleMode = SettingXml.Inst.CycleMode;
+                Global.Inst.InspStage.CycleInspect(cycleMode);
+            }
+            else
+            {
+                Global.Inst.InspStage.StartAutoRun();
+            }
         }
 
         private void btnLive_Click(object sender, EventArgs e)
@@ -38,6 +50,11 @@ namespace JYVision
                 Global.Inst.InspStage.CheckImageBuffer();
                 Global.Inst.InspStage.Grab(0);
             }
+        }
+
+        private void btnStop_Click(object sender, EventArgs e)
+        {
+            Global.Inst.InspStage.StopCycle();
         }
     }
 }

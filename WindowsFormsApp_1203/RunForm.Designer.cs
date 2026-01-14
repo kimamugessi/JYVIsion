@@ -31,6 +31,7 @@
             this.btnGrab = new System.Windows.Forms.Button();
             this.btnStart = new System.Windows.Forms.Button();
             this.btnLive = new System.Windows.Forms.Button();
+            this.btmStop = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnGrab
@@ -46,12 +47,12 @@
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(291, 13);
+            this.btnStart.Location = new System.Drawing.Point(13, 95);
             this.btnStart.Margin = new System.Windows.Forms.Padding(4);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(131, 74);
             this.btnStart.TabIndex = 1;
-            this.btnStart.Text = "검사";
+            this.btnStart.Text = "검사_시작";
             this.btnStart.UseVisualStyleBackColor = true;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
@@ -66,11 +67,23 @@
             this.btnLive.UseVisualStyleBackColor = true;
             this.btnLive.Click += new System.EventHandler(this.btnLive_Click);
             // 
+            // btmStop
+            // 
+            this.btmStop.Location = new System.Drawing.Point(152, 95);
+            this.btmStop.Margin = new System.Windows.Forms.Padding(4);
+            this.btmStop.Name = "btmStop";
+            this.btmStop.Size = new System.Drawing.Size(131, 74);
+            this.btmStop.TabIndex = 1;
+            this.btmStop.Text = "검사_중지";
+            this.btmStop.UseVisualStyleBackColor = true;
+            this.btmStop.Click += new System.EventHandler(this.btnStop_Click);
+            // 
             // RunForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 18F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(435, 97);
+            this.ClientSize = new System.Drawing.Size(436, 197);
+            this.Controls.Add(this.btmStop);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.btnLive);
             this.Controls.Add(this.btnGrab);
@@ -86,5 +99,6 @@
         private System.Windows.Forms.Button btnGrab;
         private System.Windows.Forms.Button btnStart;
         private System.Windows.Forms.Button btnLive;
+        private System.Windows.Forms.Button btmStop;
     }
 }

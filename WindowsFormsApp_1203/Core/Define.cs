@@ -23,7 +23,8 @@ namespace JYVision.Core
         None = 0,
         Base,
         Body,
-        Sub
+        Sub,
+        ID
     }
 
     public enum DecisionType

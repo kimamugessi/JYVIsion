@@ -89,5 +89,7 @@ namespace JYVision.Setting
 
         public CameraType CamType { get; set; } = CameraType.WebCam;
 
+        public bool CycleMode { get; set; } = false;
+
     }
 }
