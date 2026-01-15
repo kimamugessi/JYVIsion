@@ -64,11 +64,12 @@ namespace JYVision
 
                     blobProp.RangeChanged += RangeSlider_RangeChaged;
                     //blobProp.PropertyChanged += PropertyChanged;
+                    blobProp.ImageChannelChanged += ImageChannelchaged;
                     curProp = blobProp;
                     break;
                 case InspectType.InspMatch:
                     MatchInspProp matchProp = new MatchInspProp();
-                    matchProp.PropertyChanged += PropertyChanged;
+                    //matchProp.PropertyChanged += PropertyChanged;
                     curProp = matchProp;
                     break;
                 case InspectType.InspFilter:
@@ -132,9 +133,13 @@ namespace JYVision
             Global.Inst.InspStage.PreView?.SetBinary(lowerValue, upperValue, invert, showBinMode);
         }
 
-        private void PropertyChanged(object sender, EventArgs e)
+        //private void PropertyChanged(object sender, EventArgs e)
+        //{
+        //    Global.Inst.InspStage.RedrawMainView();
+        //}
+        private void ImageChannelchaged(object sender, ImageChannelEventArgs e)
         {
-            Global.Inst.InspStage.RedrawMainView();
+            Global.Inst.InspStage.SetPreviewImage(e.Channel);
         }
     }
 }

@@ -20,6 +20,7 @@ using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using System.Diagnostics.Eventing.Reader;
 
 namespace JYVision.Core
 {
@@ -141,6 +142,9 @@ namespace JYVision.Core
 
             SetBuffer(bufferCount);
 
+            eImageChannel imageChannel=(pixelBpp == 24) ? eImageChannel.Color : eImageChannel.Gray;
+            SetImageChannel(imageChannel);
+
             //UpdateProperty();
         }
 
@@ -170,10 +174,12 @@ namespace JYVision.Core
 
             if (_imageSpace != null)
             {
-                _imageSpace.SetImageInfo(pixelBpp, imageWidth, imageHeight, imageStride);
+                if (_imageSpace.ImageSize.Width != imageWidth || _imageSpace.ImageSize.Height != imageHeight)
+                {
+                    _imageSpace.SetImageInfo(pixelBpp, imageWidth, imageHeight, imageStride);
+                    SetBuffer(_imageSpace.BufferCount);
+                }
             }
-
-            SetBuffer(1);
 
             int bufferIndex = 0;
 
@@ -184,12 +190,6 @@ namespace JYVision.Core
             _imageSpace.Split(bufferIndex);
 
             DisplayGrabImage(bufferIndex);
-
-            if (_previewImage != null)
-            {
-                Bitmap bitmap = ImageSpace.GetBitmap(0);
-                _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
-            }
         }
 
         public void CheckImageBuffer()
@@ -274,6 +274,10 @@ namespace JYVision.Core
             MatchAlgorithm matchAlgo = (MatchAlgorithm)inspWindow.FindInspAlgorithm(InspectType.InspMatch);
             if (matchAlgo != null)
             {
+                matchAlgo.ImageChannel = SelImageChannel;
+                if(matchAlgo.ImageChannel==eImageChannel.Color)
+                    matchAlgo.ImageChannel=eImageChannel.Gray;
+
                 UpdateProperty(inspWindow);
             }
         }
@@ -419,12 +423,8 @@ namespace JYVision.Core
 
             DisplayGrabImage(bufferIndex);
 
-            if (_previewImage != null)
-            {
-                Bitmap bitmap = ImageSpace.GetBitmap(0);
-                _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
-            }
-
+            //#8_LIVE#2 LIVE 모드일때, Grab을 계속 실행하여, 반복되도록 구현
+            //이 함수는 await를 사용하여 비동기적으로 실행되어, 함수를 async로 선언해야 합니다.
             if (LiveMode)
             {
                 SLogger.Write("Grab");
@@ -451,12 +451,38 @@ namespace JYVision.Core
             }
         }
 
-        public Bitmap GetBitmap(int bufferIndex = -1)
+        public void SetPreviewImage(eImageChannel channel)
         {
-            if (Global.Inst.InspStage.ImageSpace == null)
+            if (_previewImage is null)
+                return;
+
+            Bitmap bitmap = ImageSpace.GetBitmap(0, channel);
+            _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
+
+            SetImageChannel(channel);
+        }
+
+        public void SetImageChannel(eImageChannel channel)
+        {
+            var cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null)
+            {
+                cameraForm.SetImageChannel(channel);
+            }
+        }
+        public Bitmap GetBitmap(int bufferIndex = -1, eImageChannel imageChannel = eImageChannel.None)
+        {
+            if (bufferIndex >= 0)
+                SelBufferIndex = bufferIndex;
+
+            //#BINARY FILTER#13 채널 정보가 유지되도록, eImageChannel.None 타입을 추가
+            if (imageChannel != eImageChannel.None)
+                SelImageChannel = imageChannel;
+
+            if (Global.Inst.InspStage.ImageSpace is null)
                 return null;
 
-            return Global.Inst.InspStage.ImageSpace.GetBitmap();
+            return Global.Inst.InspStage.ImageSpace.GetBitmap(SelBufferIndex, SelImageChannel);
         }
 
         public Mat GetMat(int bufferIndex = -1, eImageChannel imageChannel = eImageChannel.None)
@@ -464,11 +490,7 @@ namespace JYVision.Core
             if (bufferIndex >= 0)
                 SelBufferIndex = bufferIndex;
 
-            //#BINARY FILTER#14 채널 정보가 유지되도록, eImageChannel.None 타입을 추가
-            if (imageChannel != eImageChannel.None)
-                SelImageChannel = imageChannel;
-
-            return Global.Inst.InspStage.ImageSpace.GetMat(SelBufferIndex, SelImageChannel);
+            return Global.Inst.InspStage.ImageSpace.GetMat(SelBufferIndex, imageChannel);
         }
 
         public void UpdateDiagramEntity()
@@ -546,10 +568,10 @@ namespace JYVision.Core
             _lastestModelOpen = true;
             string lastestModel = (string)_regKey.GetValue("LastestModelPath");
             if (File.Exists(lastestModel) == false)
-                return false;
+                return true;
 
             DialogResult result = MessageBox.Show($"최근 모델을 불러오시겠습니까?\r\n[{lastestModel}] ", "최근 모델 불러오기", MessageBoxButtons.YesNo);
-            if (result == DialogResult.Yes) return true;
+            if (result == DialogResult.No) return true;
            
             return LoadModel(lastestModel);
         }

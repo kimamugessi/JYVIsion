@@ -34,7 +34,6 @@
             this.grpBinary = new System.Windows.Forms.GroupBox();
             this.cbChannel = new System.Windows.Forms.ComboBox();
             this.cbHighlight = new System.Windows.Forms.ComboBox();
-            this.lbChannel = new System.Windows.Forms.Label();
             this.lbHighlight = new System.Windows.Forms.Label();
             this.binRangeTrackbar = new JYVision.UIControl.RangeTrackbar();
             this.chkUse = new System.Windows.Forms.CheckBox();
@@ -83,15 +82,6 @@
             this.cbHighlight.Size = new System.Drawing.Size(165, 26);
             this.cbHighlight.TabIndex = 2;
             this.cbHighlight.SelectedIndexChanged += new System.EventHandler(this.cbHighlight_SelectedIndexChanged);
-            // 
-            // lbChannel
-            // 
-            this.lbChannel.AutoSize = true;
-            this.lbChannel.Location = new System.Drawing.Point(6, 59);
-            this.lbChannel.Name = "lbChannel";
-            this.lbChannel.Size = new System.Drawing.Size(69, 12);
-            this.lbChannel.TabIndex = 7;
-            this.lbChannel.Text = "이미지 채널";
             // 
             // lbHighlight
             // 
