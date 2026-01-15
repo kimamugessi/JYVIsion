@@ -45,9 +45,8 @@ namespace JYVision
             // 컨텍스트 메뉴 초기화
             _contextMenu = new ContextMenuStrip();
 
-            List<InspWindowType> windowTypeList;
-            windowTypeList = new List<InspWindowType> { InspWindowType.Base, InspWindowType.Body, InspWindowType.Sub};
-            
+            List<InspWindowType> windowTypeList = Enum.GetValues(typeof(InspWindowType)).Cast<InspWindowType>().ToList();
+
             foreach (InspWindowType windowType in windowTypeList)
                 _contextMenu.Items.Add(new ToolStripMenuItem(windowType.ToString(), null, AddNode_Click) { Tag = windowType });
 

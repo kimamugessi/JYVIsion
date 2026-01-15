@@ -82,7 +82,7 @@ namespace JYVision.Setting
 
         public SettingXml() { }
 
-        public string MachineName { get; set; } = "Jidam";
+        public string MachineName { get; set; } = "JY";
 
         public string ModelDir { get; set; } = "";
         public string ImageDir { get; set; } = "";

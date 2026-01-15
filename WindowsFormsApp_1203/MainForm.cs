@@ -52,11 +52,11 @@ namespace JYVision
             var resultForm = new ResultForm();
             resultForm.Show(cameraForm.Pane, DockAlignment.Bottom, 0.3);  // _____.Show(기준, 위치, 크기); 
 
+            //var stat = new StatisticForm();
+            //stat.Show(_dockPanel, DockState.DockRight);
+
             var propForm = new PropertiesForm();
             propForm.Show(_dockPanel, DockState.DockRight); //propForm, stat 위치값 동일 -> 겹쳐진 형태
-
-            var stat = new StatisticForm();
-            stat.Show(_dockPanel, DockState.DockRight);
 
             var modelTreeWindow=new ModelTreeForm();
             modelTreeWindow.Show(resultForm.Pane, DockAlignment.Right, 0.4);

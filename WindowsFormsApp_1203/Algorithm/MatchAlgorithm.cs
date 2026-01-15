@@ -249,13 +249,13 @@ namespace JYVision.Algorithm
 
             if (_templateImages.Count <= 0)
             {
-                MessageBox.Show("티칭 이미지는 유효하지 않습니다!");
+                MessageBox.Show("티칭 이미지가 유효하지 않습니다.");
                 return false;
             }
 
             if (_templateImages[0].Type() == MatType.CV_8UC3)
             {
-                MessageBox.Show("티칭 이미지는 칼라를 허용하지 않습니다!");
+                MessageBox.Show("티칭 이미지는 컬러를 허용하지 않습니다.");
                 return false;
             }
 
@@ -354,7 +354,6 @@ namespace JYVision.Algorithm
 
             foreach (var point in OutPoints)
             {
-                SLogger.Write($"매칭된 위치: {OutPoints}");
                 resultArea.Add(new DrawInspectInfo(new Rect(point.X, point.Y, _templateImages[0].Width, _templateImages[0].Height),
                     info, InspectType.InspMatch, decisionType));
             }

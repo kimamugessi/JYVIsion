@@ -142,6 +142,7 @@
             // 
             // cycleModeMenuItem
             // 
+            this.cycleModeMenuItem.CheckOnClick = true;
             this.cycleModeMenuItem.Name = "cycleModeMenuItem";
             this.cycleModeMenuItem.Size = new System.Drawing.Size(270, 34);
             this.cycleModeMenuItem.Text = "Cycle Mode";

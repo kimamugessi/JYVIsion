@@ -88,7 +88,7 @@ namespace JYVision.Grab
 
         internal bool InitGrab()
         {
-            SLogger.Write("Grab 초기화 시작!");
+            SLogger.Write("Grab 초기화 시작");
 
             if (!Create())
                 return false;
@@ -99,7 +99,7 @@ namespace JYVision.Grab
                     return false;
             }
 
-            SLogger.Write("Grab 초기화 성공!");
+            SLogger.Write("Grab 초기화 성공");
             return true;
         }
 

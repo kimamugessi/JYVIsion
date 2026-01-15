@@ -75,6 +75,8 @@ namespace JYVision.UIControl
 
         private List<DrawInspectInfo> _rectInfos = new List<DrawInspectInfo>();
 
+        public string WorkingState { get; set; } = "";
+
         //#13_INSP_RESULT#4 검사 양불 판정 갯수를 화면에 표시하기 위한 변수
         private InspectResultCount _inspectResultCount = new InspectResultCount();
 
@@ -112,6 +114,8 @@ namespace JYVision.UIControl
         
         //팝업 메뉴
         private ContextMenuStrip _contextMenu;
+
+        private readonly object _lock = new object();
 
         public ImageViewCtrl()
         {
@@ -268,61 +272,69 @@ namespace JYVision.UIControl
         }
         private void DrawDiagram(Graphics g)
         {
-            _screenSelectedRect = new Rectangle(0, 0, 0, 0); //선택된 사각형 초기화
+            //#10_INSPWINDOW#18 ROI 그리기
+            _screenSelectedRect = new Rectangle(0, 0, 0, 0);
             foreach (DiagramEntity entity in _diagramEntityList)
             {
                 Rectangle screenRect = VirtualToScreen(entity.EntityROI);
                 using (Pen pen = new Pen(entity.EntityColor, 2))
                 {
-                    if (_multiSelectedEntities.Contains(entity)) //다중 선택(ROI 박스가 여러개)된 엔티티라면
+                    if (_multiSelectedEntities.Contains(entity))
                     {
                         pen.DashStyle = DashStyle.Dash;
                         pen.Width = 2;
 
-                        if (_screenSelectedRect.IsEmpty) _screenSelectedRect = screenRect;
-                        else _screenSelectedRect = Rectangle.Union(_screenSelectedRect, screenRect); //선택된 사각형 영역 갱신(선택된 ROI 박스들의 합집합)
+                        if (_screenSelectedRect.IsEmpty)
+                        {
+                            _screenSelectedRect = screenRect;
+                        }
+                        else
+                        {
+                            //선택된 roi가 여러개 일때, 전체 roi 영역 계산
+                            //선택된 roi 영역 합치기
+                            _screenSelectedRect = Rectangle.Union(_screenSelectedRect, screenRect);
+                        }
                     }
+
                     g.DrawRectangle(pen, screenRect);
                 }
 
-                if (_multiSelectedEntities.Count <= 1 && entity == _selEntity) //선택된 엔티티라면
+                //선택된 ROI가 있다면, 리사이즈 핸들 그리기
+                if (_multiSelectedEntities.Count <= 1 && entity == _selEntity)
                 {
-                    using (Brush brush = new SolidBrush(Color.LightBlue)) //크기 변경 상자의 꼭짓점 그리기
+                    // 리사이즈 핸들 그리기 (8개 포인트: 4 모서리 + 4 변 중간)
+                    using (Brush brush = new SolidBrush(Color.LightBlue))
                     {
                         Point[] resizeHandles = GetResizeHandles(screenRect);
                         foreach (Point handle in resizeHandles)
                         {
-                            g.FillRectangle(brush,
-                                handle.X - _ResizeHandleSize / 2,
-                                handle.Y - _ResizeHandleSize / 2,
-                                _ResizeHandleSize,
-                                _ResizeHandleSize);
+                            g.FillRectangle(brush, handle.X - _ResizeHandleSize / 2, handle.Y - _ResizeHandleSize / 2, _ResizeHandleSize, _ResizeHandleSize);
                         }
                     }
                 }
             }
 
-            if (_multiSelectedEntities.Count > 1 && !_screenSelectedRect.IsEmpty) //다중 선택된 엔티티가 있다면
+            //선택된 개별 roi가 없고, 여러개가 선택되었다면
+            if (_multiSelectedEntities.Count > 1 && !_screenSelectedRect.IsEmpty)
             {
-                using (Pen pen = new Pen(Color.White, 2)) //선택된 사각형 영역 그리기
+                using (Pen pen = new Pen(Color.White, 2))
                 {
                     g.DrawRectangle(pen, _screenSelectedRect);
                 }
+
+                // 리사이즈 핸들 그리기 (8개 포인트: 4 모서리 + 4 변 중간)
                 using (Brush brush = new SolidBrush(Color.LightBlue))
                 {
                     Point[] resizeHandles = GetResizeHandles(_screenSelectedRect);
                     foreach (Point handle in resizeHandles)
                     {
-                        g.FillRectangle(brush,
-                            handle.X - _ResizeHandleSize / 2,
-                            handle.Y - _ResizeHandleSize / 2,
-                            _ResizeHandleSize,
-                            _ResizeHandleSize);
+                        g.FillRectangle(brush, handle.X - _ResizeHandleSize / 2, handle.Y - _ResizeHandleSize / 2, _ResizeHandleSize, _ResizeHandleSize);
                     }
                 }
             }
 
-            if (_isSelectingRoi && !_roiRect.IsEmpty) //최초의 ROI 선택중일때
+            //신규 ROI 추가할때, 해당 ROI 그리기
+            if (_isSelectingRoi && !_roiRect.IsEmpty)
             {
                 Rectangle rect = VirtualToScreen(_roiRect);
                 using (Pen pen = new Pen(_selColor, 2))
@@ -337,7 +349,8 @@ namespace JYVision.UIControl
                 DrawInspParam(g, _selEntity.LinkedWindow);
             }
 
-            if (_isBoxSelecting && !_selectionBox.IsEmpty) //박스 선택중일때
+            //선택 영역 박스 그리기
+            if (_isBoxSelecting && !_selectionBox.IsEmpty)
             {
                 using (Pen pen = new Pen(Color.LightSkyBlue, 3))
                 {
@@ -347,66 +360,18 @@ namespace JYVision.UIControl
                 }
             }
 
-            // 이미지 좌표 → 화면 좌표 변환 후 사각형 그리기
-            if (_rectInfos != null)
+            lock (_lock)
             {
-                foreach (DrawInspectInfo rectInfo in _rectInfos)
-                {
-                    Color lineColor = Color.LightCoral;
-                    if (rectInfo.decision == DecisionType.Defect)
-                        lineColor = Color.Red;
-                    else if (rectInfo.decision == DecisionType.Good)
-                        lineColor = Color.LightGreen;
+                DrawRectInfo(g);
+            }
 
-                    Rectangle rect = new Rectangle(rectInfo.rect.X, rectInfo.rect.Y, rectInfo.rect.Width, rectInfo.rect.Height);
-                    Rectangle screenRect = VirtualToScreen(rect);
-
-                    using (Pen pen = new Pen(lineColor, 2))
-                    {
-                        if (rectInfo.UseRotatedRect)
-                        {
-                            PointF[] screenPoints = rectInfo.rotatedPoints
-                                                    .Select(p => VirtualToScreen(new PointF(p.X, p.Y))) // 화면 좌표계로 변환
-                                                    .ToArray();
-
-                            if (screenPoints.Length == 4)
-                            {
-                                for (int i = 0; i < 4; i++)
-                                {
-                                    g.DrawLine(pen, screenPoints[i], screenPoints[(i + 1) % 4]); // 시계방향으로 선 연결
-                                }
-                            }
-                        }
-                        else
-                        {
-                            g.DrawRectangle(pen, screenRect);
-                        }
-                    }
-
-                    if (rectInfo.info != "")
-                    {
-                        float baseFontSize = 20.0f;
-
-                        if (rectInfo.decision == DecisionType.Info)
-                        {
-                            baseFontSize = 3.0f;
-                            lineColor = Color.LightBlue;
-                        }
-
-                        float fontSize = baseFontSize * _curZoom;
-
-                        string infoText = rectInfo.info;
-                        PointF textPos = new PointF(screenRect.Left, screenRect.Top); // 위로 약간 띄우기
-
-                        if (rectInfo.inspectType == InspectType.InspBinary
-                            && rectInfo.decision != DecisionType.Info)
-                        {
-                            textPos.Y = screenRect.Bottom - fontSize;
-                        }
-
-                        DrawText(g, infoText, textPos, fontSize, lineColor);
-                    }
-                }
+            //#17_WORKING_STATE#4 작업 상태 화면에 표시
+            if (WorkingState != "")
+            {
+                float fontSize = 20.0f;
+                Color stateColor = Color.FromArgb(255, 128, 0);
+                PointF textPos = new PointF(10, 10);
+                DrawText(g, WorkingState, textPos, fontSize, stateColor);
             }
 
             //#13_INSP_RESULT#5 검사 양불판정 갯수 화면에 표시
@@ -420,6 +385,72 @@ namespace JYVision.UIControl
                 DrawText(g, resultText, textPos, fontSize, resultColor);
             }
         }
+        private void DrawRectInfo(Graphics g)
+        {
+            if (_rectInfos == null || _rectInfos.Count <= 0)
+                return;
+
+            // 이미지 좌표 → 화면 좌표 변환 후 사각형 그리기
+            foreach (DrawInspectInfo rectInfo in _rectInfos)
+            {
+                Color lineColor = Color.LightCoral;
+                if (rectInfo.decision == DecisionType.Defect)
+                    lineColor = Color.Red;
+                else if (rectInfo.decision == DecisionType.Good)
+                    lineColor = Color.LightGreen;
+
+                Rectangle rect = new Rectangle(rectInfo.rect.X, rectInfo.rect.Y, rectInfo.rect.Width, rectInfo.rect.Height);
+                Rectangle screenRect = VirtualToScreen(rect);
+
+                using (Pen pen = new Pen(lineColor, 2))
+                {
+                    if (rectInfo.UseRotatedRect)
+                    {
+                        PointF[] screenPoints = rectInfo.rotatedPoints
+                                                .Select(p => VirtualToScreen(new PointF(p.X, p.Y))) // 화면 좌표계로 변환
+                                                .ToArray();
+
+                        if (screenPoints.Length == 4)
+                        {
+                            for (int i = 0; i < 4; i++)
+                            {
+                                g.DrawLine(pen, screenPoints[i], screenPoints[(i + 1) % 4]); // 시계방향으로 선 연결
+                            }
+                        }
+                    }
+                    else
+                    {
+                        g.DrawRectangle(pen, screenRect);
+                    }
+                }
+
+                if (rectInfo.info != "")
+                {
+                    float baseFontSize = 20.0f;
+
+                    if (rectInfo.decision == DecisionType.Info)
+                    {
+                        baseFontSize = 3.0f;
+                        lineColor = Color.LightBlue;
+                    }
+
+                    float fontSize = baseFontSize * _curZoom;
+
+                    // 스코어 문자열 그리기 (우상단)
+                    string infoText = rectInfo.info;
+                    PointF textPos = new PointF(screenRect.Left, screenRect.Top); // 위로 약간 띄우기
+
+                    if (rectInfo.inspectType == InspectType.InspBinary
+                        && rectInfo.decision != DecisionType.Info)
+                    {
+                        textPos.Y = screenRect.Bottom - fontSize;
+                    }
+
+                    DrawText(g, infoText, textPos, fontSize, lineColor);
+                }
+            }
+        }
+
 
         private void DrawText(Graphics g, string text, PointF position, float fontSize, Color color)
         {
@@ -943,8 +974,12 @@ namespace JYVision.UIControl
         //#8_INSPECT_BINARY#17 화면에 보여줄 영역 정보를 표시하기 위해, 위치 입력 받는 함수
         public void AddRect(List<DrawInspectInfo> rectInfos)
         {
-            _rectInfos.AddRange(rectInfos);
-            Invalidate();
+            lock(_lock)
+            {
+                _rectInfos.AddRange(rectInfos);
+                Invalidate();
+            }
+           
         }
 
         public void SetInspResultCount(InspectResultCount inspectResultCount)
@@ -1034,7 +1069,13 @@ namespace JYVision.UIControl
 
         public void ResetEntity()
         {
-            _rectInfos.Clear();
+            lock (_lock)
+            {
+                _rectInfos.Clear();
+                _diagramEntityList.Clear();
+                _multiSelectedEntities.Clear();
+                _selEntity = null;
+            }
             Invalidate();
         }
 

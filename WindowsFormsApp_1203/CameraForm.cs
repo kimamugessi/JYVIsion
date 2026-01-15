@@ -26,6 +26,8 @@ namespace JYVision
             InitializeComponent();
 
             imageViewer.DiagramEntityEvent += ImageViewer_DiagramEntityEvent;
+
+
         }
 
         private void ImageViewer_DiagramEntityEvent(object sender, DiagramEntityEventArgs e)
@@ -173,6 +175,26 @@ namespace JYVision
         {
             imageViewer.SetInspResultCount(new InspectResultCount(totalArea, okCnt, ngCnt));
         }
+
+        public void SetWorkingState(WorkingState workingState)
+        {
+            string state = "";
+            switch (workingState)
+            {
+                case WorkingState.INSPECT:
+                    state = "INSPECT";
+                    break;
+                case WorkingState.LIVE:
+                    state = "LIVE";
+                    break;
+                case WorkingState.ALARM:
+                    state = "ALARM";
+                    break;
+            }
+            imageViewer.WorkingState = state;
+            imageViewer.Invalidate();
+        }
+
 
     }
 }

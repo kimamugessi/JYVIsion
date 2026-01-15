@@ -19,6 +19,7 @@ using JYVision.Core;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace JYVision.Core
 {
@@ -42,7 +43,9 @@ namespace JYVision.Core
         private InspWorker _inspWorker = null;
         private ImageLoader _imageLoader = null;
 
+        RegistryKey _regKey = null;
 
+        private bool _lastestModelOpen = false;
 
         public bool UseCamera { get; set; } = false;
 
@@ -79,13 +82,15 @@ namespace JYVision.Core
 
         public bool Initialize()
         {
-            SLogger.Write("InspStage 초기화!");
+            SLogger.Write("InspStage 초기화");
             _imageSpace = new ImageSpace();
 
             _previewImage = new PreviewImage();
 
             _inspWorker = new InspWorker();
             _imageLoader = new ImageLoader();
+
+            _regKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\JYVision\InspStage");
 
             _model =new Model();
 
@@ -100,6 +105,11 @@ namespace JYVision.Core
                 _grabManager.TransferCompleted += _multiGrab_TransferCompleted;
 
                 InitModelGrab(MAX_GRAB_BUF);
+            }
+
+            if (!LastestModelOpen())
+            {
+                MessageBox.Show("최근 모델을 불러오지 못했습니다.");
             }
 
             return true;
@@ -248,7 +258,7 @@ namespace JYVision.Core
             if (inspWindow.WindowArea.Right >= curImage.Width ||
                 inspWindow.WindowArea.Bottom >= curImage.Height)
             {
-                SLogger.Write("ROI 영역이 잘못되었습니다!");
+                SLogger.Write("ROI 영역이 잘못되었습니다.");
                 return;
             }
 
@@ -284,7 +294,7 @@ namespace JYVision.Core
                         i);
                 }
             }
-            SLogger.Write("버퍼 초기화 성공!");
+            SLogger.Write("버퍼 초기화 성공");
         }
 
         public void TryInspection(InspWindow inspWindow)
@@ -513,6 +523,9 @@ namespace JYVision.Core
 
             UpdateDiagramEntity();
 
+            _regKey.SetValue("LastestModelPath", filePath);
+
+
             return true;
         }
 
@@ -527,7 +540,19 @@ namespace JYVision.Core
                 Global.Inst.InspStage.CurModel.SaveAs(filePath);
         }
 
+        private bool LastestModelOpen()
+        {
+            if(_lastestModelOpen) return true;
+            _lastestModelOpen = true;
+            string lastestModel = (string)_regKey.GetValue("LastestModelPath");
+            if (File.Exists(lastestModel) == false)
+                return false;
 
+            DialogResult result = MessageBox.Show($"최근 모델을 불러오시겠습니까?\r\n[{lastestModel}] ", "최근 모델 불러오기", MessageBoxButtons.YesNo);
+            if (result == DialogResult.Yes) return true;
+           
+            return LoadModel(lastestModel);
+        }
 
 
         public void CycleInspect(bool isCycle)
@@ -577,10 +602,10 @@ namespace JYVision.Core
         }
         public void StopCycle()
         {
-            //+if (_inspWorker != null)
-               //+ _inspWorker.Stop();
+            if (_inspWorker != null)
+               _inspWorker.Stop();
 
-            //+SetWorkingState(WorkingState.NONE);
+            SetWorkingState(WorkingState.NONE);
         }
 
         public bool VirtualGrab()
@@ -623,18 +648,28 @@ namespace JYVision.Core
             string modelPath = CurModel.ModelPath;
             if (modelPath == "")
             {
-                SLogger.Write("열려진 모델이 없습니다!", SLogger.LogType.Error);
-                MessageBox.Show("열려진 모델이 없습니다!");
+                SLogger.Write("모델이 없습니다.", SLogger.LogType.Error);
+                MessageBox.Show("모델이 없습니다.");
                 return false;
             }
 
             LiveMode = false;
             UseCamera = SettingXml.Inst.CamType != CameraType.None ? true : false;
 
-            //+SetWorkingState(WorkingState.INSPECT);
+            SetWorkingState(WorkingState.INSPECT);
 
             return true;
         }
+
+        public void SetWorkingState(WorkingState workingState)
+        {
+            var cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null)
+            {
+                cameraForm.SetWorkingState(workingState);
+            }
+        }
+
         #region Disposable
 
         private bool disposed = false;
@@ -655,6 +690,7 @@ namespace JYVision.Core
                         _grabManager.Dispose();
                         _grabManager = null;
                     }
+                    _regKey.Close();
                 }
 
                 // Dispose unmanaged managed resources.

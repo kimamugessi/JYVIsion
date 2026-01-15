@@ -24,7 +24,7 @@ namespace JYVision.Inspect
         public InspWorker()
         {
         }
-        public void stop() { _cts.Cancel(); }
+        public void Stop() { _cts.Cancel(); }
 
         public void StartCycleInspectImage()
         {

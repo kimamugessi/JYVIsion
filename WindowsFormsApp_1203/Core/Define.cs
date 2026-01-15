@@ -36,6 +36,15 @@ namespace JYVision.Core
         Error,
         Timeout
     }
+
+    public enum WorkingState
+    {
+        NONE = 0,
+        INSPECT,
+        LIVE,
+        ALARM
+    }
+
     public static class Define
     {
         public static readonly string ROI_IMAGE_NAME = "RoiImage.png";

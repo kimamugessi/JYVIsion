@@ -47,12 +47,14 @@ namespace JYVision
 
             if (Global.Inst.InspStage.LiveMode)
             {
+                Global.Inst.InspStage.SetWorkingState(WorkingState.LIVE);
+
                 Global.Inst.InspStage.CheckImageBuffer();
                 Global.Inst.InspStage.Grab(0);
             }
             else
             {
-                //Global.Inst.InspStage.SetWorkingState(WorkingState.NONE);
+                Global.Inst.InspStage.SetWorkingState(WorkingState.NONE);
             }
         }
 
