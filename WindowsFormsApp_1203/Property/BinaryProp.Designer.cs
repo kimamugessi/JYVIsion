@@ -138,7 +138,7 @@
             this.label1.Text = "검사 타입";
             // 
             // cbBinMethod
-            // 
+            // ]
             this.cbBinMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbBinMethod.FormattingEnabled = true;
             this.cbBinMethod.Location = new System.Drawing.Point(105, 244);
@@ -146,7 +146,7 @@
             this.cbBinMethod.Name = "cbBinMethod";
             this.cbBinMethod.Size = new System.Drawing.Size(165, 26);
             this.cbBinMethod.TabIndex = 2;
-            this.cbBinMethod.SelectedIndexChanged += new System.EventHandler(this.cbHighlight_SelectedIndexChanged);
+            this.cbBinMethod.SelectedIndexChanged += new System.EventHandler(this.cbBinMethod_SelectedIndexChanged);
             // 
             // chkRotatedRect
             // 

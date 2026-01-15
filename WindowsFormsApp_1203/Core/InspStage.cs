@@ -453,7 +453,7 @@ namespace JYVision.Core
 
         public void SetPreviewImage(eImageChannel channel)
         {
-            if (_previewImage is null)
+            if (_previewImage == null)
                 return;
 
             Bitmap bitmap = ImageSpace.GetBitmap(0, channel);
@@ -470,6 +470,7 @@ namespace JYVision.Core
                 cameraForm.SetImageChannel(channel);
             }
         }
+
         public Bitmap GetBitmap(int bufferIndex = -1, eImageChannel imageChannel = eImageChannel.None)
         {
             if (bufferIndex >= 0)
@@ -531,7 +532,7 @@ namespace JYVision.Core
                 
             _model = _model.Load(filePath);
 
-            if (_model is null)
+            if (_model == null)
             {
                 SLogger.Write($"모델 로딩 실패:{filePath}");
                 return false;
