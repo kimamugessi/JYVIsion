@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JYVision.Algorithm;
 using JYVision.Core;
 using JYVision.Teach;
+using OpenCvSharp;
 
 namespace JYVision.Inspect
 {
     public class InspectBoard
     {
         public InspectBoard() { }
-        public bool Inspect(InspWindow window)
+        public bool Inspect(InspWindow window) 
         {
             if (window == null)
                 return false;
@@ -85,7 +85,7 @@ namespace JYVision.Inspect
             foreach (InspWindow window in windowList)
             {
                 window.SetInspOffset(alignOffset);
-                if (!inpectWindow(window))
+                if (!InspectWindow(window))
                     return false;
             }
             return true;

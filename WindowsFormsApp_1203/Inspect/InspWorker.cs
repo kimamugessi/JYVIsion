@@ -53,7 +53,7 @@ namespace JYVision.Inspect
             foreach (var inspWindow in inspWindowList)
             {
                 if (inspWindow == null) continue;
-                UpdateinspData(inspWindow);
+                UpdateInspData(inspWindow);
             }
             _InspectBoard.InspectWindowList(inspWindowList);
 
@@ -92,7 +92,7 @@ namespace JYVision.Inspect
                 if (!UpdateInspData(inspObj))
                     return false;
 
-                _inspectBoard.Inspect(inspObj);
+                _InspectBoard.Inspect(inspObj);
 
                 DisplayResult(inspObj, inspType);
             }

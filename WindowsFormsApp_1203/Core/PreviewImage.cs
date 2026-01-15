@@ -25,7 +25,7 @@ namespace JYVision.Core
             _previewImage = new Mat();
         }
 
-        //#10_INSPWINDOW#6 프리뷰를 위한 InspWindow 설정
+   
         public void SetInspWindow(InspWindow inspwindow)
         {
             _inspWindow = inspwindow;
@@ -54,7 +54,7 @@ namespace JYVision.Core
 
             Rect windowArea = new Rect(0, 0, _orinalImage.Width, _orinalImage.Height);
 
-            //#10_INSPWINDOW#7 InspWindow가 있다면 프리뷰 설정 영역을 ROI로 변경
+           
             if (_inspWindow != null)
             {
                 windowArea = _inspWindow.WindowArea;

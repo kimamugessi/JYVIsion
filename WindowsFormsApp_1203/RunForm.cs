@@ -50,6 +50,10 @@ namespace JYVision
                 Global.Inst.InspStage.CheckImageBuffer();
                 Global.Inst.InspStage.Grab(0);
             }
+            else
+            {
+                //Global.Inst.InspStage.SetWorkingState(WorkingState.NONE);
+            }
         }
 
         private void btnStop_Click(object sender, EventArgs e)
