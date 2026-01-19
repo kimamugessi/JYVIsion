@@ -21,6 +21,8 @@ using OpenCvSharp.Extensions;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using System.Diagnostics.Eventing.Reader;
+using JYVision.Sequence;
+using System.Data.SqlClient;
 
 namespace JYVision.Core
 {
@@ -50,8 +52,15 @@ namespace JYVision.Core
 
         public bool UseCamera { get; set; } = false;
 
+        public bool SaveCamImage { get; set; } = false;
+        public int SaveImageIndex { get; set; } = 0;
+
+        private string _capturePath = "";
+
         private string _lotNumber;
         private string _serialID;
+
+        private bool _isInspectMode = false;
 
         public InspStage() { }
         public ImageSpace ImageSpace
@@ -107,6 +116,9 @@ namespace JYVision.Core
 
                 InitModelGrab(MAX_GRAB_BUF);
             }
+
+            VisionSequence.Inst.InitSequence();
+            VisionSequence.Inst.SeqCommand += SeqCommand;
 
             if (!LastestModelOpen())
             {
@@ -174,10 +186,12 @@ namespace JYVision.Core
 
             if (_imageSpace != null)
             {
-                _imageSpace.SetImageInfo(pixelBpp, imageWidth, imageHeight, imageStride);
+                if (_imageSpace.ImageSize.Width != imageWidth || _imageSpace.ImageSize.Height != imageHeight)
+                {
+                    _imageSpace.SetImageInfo(pixelBpp, imageWidth, imageHeight, imageStride);
+                    SetBuffer(_imageSpace.BufferCount);
+                }
             }
-
-            SetBuffer(1);
 
             int bufferIndex = 0;
 
@@ -188,12 +202,6 @@ namespace JYVision.Core
             _imageSpace.Split(bufferIndex);
 
             DisplayGrabImage(bufferIndex);
-
-            if (_previewImage != null)
-            {
-                Bitmap bitmap = ImageSpace.GetBitmap(0);
-                _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
-            }
         }
 
         public void CheckImageBuffer()
@@ -427,12 +435,8 @@ namespace JYVision.Core
 
             DisplayGrabImage(bufferIndex);
 
-            if (_previewImage != null)
-            {
-                Bitmap bitmap = ImageSpace.GetBitmap(0);
-                _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
-            }
-
+            //#8_LIVE#2 LIVE 모드일때, Grab을 계속 실행하여, 반복되도록 구현
+            //이 함수는 await를 사용하여 비동기적으로 실행되어, 함수를 async로 선언해야 합니다.
             if (LiveMode)
             {
                 SLogger.Write("Grab");
@@ -461,7 +465,7 @@ namespace JYVision.Core
 
         public void SetPreviewImage(eImageChannel channel)
         {
-            if (_previewImage is null)
+            if (_previewImage == null)
                 return;
 
             Bitmap bitmap = ImageSpace.GetBitmap(0, channel);
@@ -478,6 +482,7 @@ namespace JYVision.Core
                 cameraForm.SetImageChannel(channel);
             }
         }
+
         public Bitmap GetBitmap(int bufferIndex = -1, eImageChannel imageChannel = eImageChannel.None)
         {
             if (bufferIndex >= 0)
@@ -498,11 +503,7 @@ namespace JYVision.Core
             if (bufferIndex >= 0)
                 SelBufferIndex = bufferIndex;
 
-            //#BINARY FILTER#14 채널 정보가 유지되도록, eImageChannel.None 타입을 추가
-            if (imageChannel != eImageChannel.None)
-                SelImageChannel = imageChannel;
-
-            return Global.Inst.InspStage.ImageSpace.GetMat(SelBufferIndex, SelImageChannel);
+            return Global.Inst.InspStage.ImageSpace.GetMat(SelBufferIndex, imageChannel);
         }
 
         public void UpdateDiagramEntity()
@@ -543,7 +544,7 @@ namespace JYVision.Core
                 
             _model = _model.Load(filePath);
 
-            if (_model is null)
+            if (_model == null)
             {
                 SLogger.Write($"모델 로딩 실패:{filePath}");
                 return false;
@@ -580,10 +581,10 @@ namespace JYVision.Core
             _lastestModelOpen = true;
             string lastestModel = (string)_regKey.GetValue("LastestModelPath");
             if (File.Exists(lastestModel) == false)
-                return false;
+                return true;
 
             DialogResult result = MessageBox.Show($"최근 모델을 불러오시겠습니까?\r\n[{lastestModel}] ", "최근 모델 불러오기", MessageBoxButtons.YesNo);
-            if (result == DialogResult.Yes) return true;
+            if (result == DialogResult.No) return true;
            
             return LoadModel(lastestModel);
         }
@@ -639,6 +640,9 @@ namespace JYVision.Core
             if (_inspWorker != null)
                _inspWorker.Stop();
 
+            VisionSequence.Inst.StopAutoRun();
+            _isInspectMode = false;
+
             SetWorkingState(WorkingState.NONE);
         }
 
@@ -658,6 +662,47 @@ namespace JYVision.Core
             DisplayGrabImage(0);
 
             return true;
+        }
+
+        private void SeqCommand(object sender, SeqCmd seqCmd, object Param)
+        {
+            switch (seqCmd)
+            {
+                case SeqCmd.InspStart:
+                    {
+                        SLogger.Write("MMI : InspStart", SLogger.LogType.Info);
+
+                        string errMsg;
+
+                        if (UseCamera)
+                        {
+                            if (!Grab(0))
+                            {
+                                errMsg = string.Format("Failed to grab");
+                                SLogger.Write(errMsg, SLogger.LogType.Error);
+                            }
+                        }
+                        else
+                        {
+                            if (!VirtualGrab())
+                            {
+                                errMsg = string.Format("Failed to virtual grab");
+                                SLogger.Write(errMsg, SLogger.LogType.Error);
+                            }
+                        }
+                    }
+                    break;
+                case SeqCmd.InspEnd:
+                    {
+                        SLogger.Write("MMI : InspEnd", SLogger.LogType.Info);
+
+                        string errMsg = "";
+                        SLogger.Write("검사 종료");
+
+                        VisionSequence.Inst.VisionCommand(Vision2Mmi.InspEnd, errMsg);
+                    }
+                    break;
+            }
         }
 
         public bool InspectReady(string lotNumber, string serialID)
@@ -692,6 +737,9 @@ namespace JYVision.Core
 
             SetWorkingState(WorkingState.INSPECT);
 
+            string modelName = Path.GetFileNameWithoutExtension(modelPath);
+            VisionSequence.Inst.StartAutoRun(modelName);
+            _isInspectMode = true;
             return true;
         }
 
@@ -714,6 +762,8 @@ namespace JYVision.Core
             {
                 if (disposing)
                 {
+                    VisionSequence.Inst.SeqCommand -= SeqCommand;
+
                     if (_saigeAI != null)
                     {
                         _saigeAI.Dispose();

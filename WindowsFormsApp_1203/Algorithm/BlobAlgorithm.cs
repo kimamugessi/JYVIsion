@@ -167,8 +167,11 @@ namespace JYVision.Algorithm
             if(_findArea!=null) _findArea.Clear();
         }
 
-        private bool InspPixelCount(Mat binImage) {
-            if(binImage.Empty() || binImage.Type() != MatType.CV_8UC1) return false;
+        //검사 영역에서 백색 픽셀의 갯수로 OK/NG 여부만 판단
+        private bool InspPixelCount(Mat binImage)
+        {
+            if (binImage.Empty() || binImage.Type() != MatType.CV_8UC1)
+                return false;
 
             int pixelCount=Cv2.CountNonZero(binImage);
 

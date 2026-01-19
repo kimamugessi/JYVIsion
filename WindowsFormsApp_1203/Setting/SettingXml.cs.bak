@@ -90,8 +90,6 @@ namespace JYVision.Setting
 
         public CameraType CamType { get; set; } = CameraType.WebCam;
 
-        public long ExposureTime { get; set; } = 15000; //단위: us
-
         public bool CycleMode { get; set; } = false;
 
         public CommunicatorType CommType { get; set; }

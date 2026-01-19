@@ -146,13 +146,17 @@ namespace JYVision.UIControl
                 case InspWindowType.Base:
                     color = Color.LightBlue;
                     break;
-                case InspWindowType.Sub:
-                    color = Color.Orange;
-                    break;
                 case InspWindowType.Body:
                     color = Color.Yellow;
                     break;
+                case InspWindowType.Sub:
+                    color = Color.Orange;
+                    break;
+                case InspWindowType.ID:
+                    color = Color.Magenta;
+                    break;
             }
+
             return color;
         }
 
@@ -183,13 +187,23 @@ namespace JYVision.UIControl
             ImageRect = new RectangleF(offsetX, offsetY, virtualWidth, virtualHeight);
         }
 
-        public void LoadBitmap(Bitmap bitmap)   //이미지 로드 함수
+        //#4_IMAGE_VIEWER#5 이미지 로딩 함수
+        public void LoadBitmap(Bitmap bitmap)
         {
-            if (_bitmapImage != null)   //이미지가 있다면 해제 후 초기화
+            //#15_INSP_WORKER#9 스레드에서 검사시, 멈추는 현상 방지
+            if (this.InvokeRequired)
             {
-                //이미지 크기가 같다면 이미지 변경 후 화면 갱신
+                this.BeginInvoke(new Action<Bitmap>(LoadBitmap), bitmap);
+                return;
+            }
+
+            // 기존에 로드된 이미지가 있다면 해제 후 초기화, 메모리누수 방지
+            if (_bitmapImage != null)
+            {
+                //이미지 크기가 같다면, 이미지 변경 후, 화면 갱신
                 if (_bitmapImage.Width == bitmap.Width && _bitmapImage.Height == bitmap.Height)
                 {
+                    _bitmapImage.Dispose();   // 기존 이미지 해제 후 교체
                     _bitmapImage = bitmap;
                     Invalidate();
                     return;
@@ -976,10 +990,9 @@ namespace JYVision.UIControl
         {
             lock(_lock)
             {
-                _rectInfos.AddRange(rectInfos);
+                _rectInfos = rectInfos;
                 Invalidate();
             }
-           
         }
 
         public void SetInspResultCount(InspectResultCount inspectResultCount)
@@ -1071,9 +1084,8 @@ namespace JYVision.UIControl
         {
             lock (_lock)
             {
-                _rectInfos.Clear();
                 _diagramEntityList.Clear();
-                _multiSelectedEntities.Clear();
+                _rectInfos.Clear();
                 _selEntity = null;
             }
             Invalidate();
@@ -1153,6 +1165,8 @@ namespace JYVision.UIControl
                 DiagramEntityEvent?.Invoke(this, new DiagramEntityEventArgs(EntityActionType.Delete, linkedWindow));
             }
         }
+
+
     }
     #region EventArgs
     public class DiagramEntityEventArgs : EventArgs

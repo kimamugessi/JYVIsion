@@ -39,7 +39,8 @@ namespace JYVision.Grab
                 {
                     IImage inputImage = frameOut.Image;
                     IImage outImage;
-                    MvGvspPixelType dstPixelType = MvGvspPixelType.PixelType_Gvsp_RGB8_Packed;
+                    MvGvspPixelType dstPixelType = MvGvspPixelType.PixelType_Gvsp_BGR8_Packed;
+
 
                     int result = _device.PixelTypeConverter.ConvertPixelType(inputImage, out outImage, dstPixelType);
                     if (result != MvError.MV_OK)
@@ -335,7 +336,7 @@ namespace JYVision.Grab
             int result = _device.Parameters.GetFloatValue("Gain", out floatValue);
             if (result == MvError.MV_OK)
             {
-                gain = (long)floatValue.CurValue;
+                gain = floatValue.CurValue;
             }
 
             return true;

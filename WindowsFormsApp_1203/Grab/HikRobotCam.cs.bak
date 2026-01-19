@@ -20,12 +20,12 @@ namespace JYVision.Grab
 
         void FrameGrabedEventHandler(object sender, FrameGrabbedEventArgs e)
         {
-            Console.WriteLine("Get one frame : Width[{0}],Height[{1}],ImageSize[{2}],FramNum[{3}]", e.FrameOut.Image.Width, e.FrameOut.Image.Height, e.FrameOut.Image.ImageSize, e.FrameOut.FrameNum);
+            //SLogger.Write("Get one frame: Width[{0}] , Height[{1}] , ImageSize[{2}], FrameNum[{3}]", e.FrameOut.Image.Width, e.FrameOut.Image.Height, e.FrameOut.Image.ImageSize, e.FrameOut.FrameNum);
 
             IFrameOut frameOut = e.FrameOut;
             OnGrabCompleted(BufferIndex);
 
-            if (_userImageBuffer[BufferIndex].ImageBuffer != null) 
+            if (_userImageBuffer[BufferIndex].ImageBuffer != null)
             {
                 if (frameOut.Image.PixelType == MvGvspPixelType.PixelType_Gvsp_Mono8)
                 {
@@ -33,13 +33,14 @@ namespace JYVision.Grab
                     {
                         IntPtr ptrSourceTemp = frameOut.Image.PixelDataPtr;
                         Marshal.Copy(ptrSourceTemp, _userImageBuffer[BufferIndex].ImageBuffer, 0, (int)frameOut.Image.ImageSize);
-                    }
+                    }   
                 }
                 else
                 {
                     IImage inputImage = frameOut.Image;
                     IImage outImage;
                     MvGvspPixelType dstPixelType = MvGvspPixelType.PixelType_Gvsp_BGR8_Packed;
+
 
                     int result = _device.PixelTypeConverter.ConvertPixelType(inputImage, out outImage, dstPixelType);
                     if (result != MvError.MV_OK)
@@ -64,7 +65,6 @@ namespace JYVision.Grab
                 if (BufferIndex >= _userImageBuffer.Count()) BufferIndex = 0;
             }
         }
-
 
         #region Method
 
@@ -152,9 +152,15 @@ namespace JYVision.Grab
                 try
                 {
                     int result = _device.Parameters.SetCommandValue("TriggerSoftware");
-                    if (result != MvError.MV_OK) ret = false;
+                    if (result != MvError.MV_OK)
+                    {
+                        ret = false;
+                    }
                 }
-                catch { ret = false; }
+                catch
+                {
+                    ret = false;
+                }
             }
 
             return ret;
@@ -228,7 +234,7 @@ namespace JYVision.Grab
                     ret = _device.StreamGrabber.StartGrabbing();
                     if (ret != MvError.MV_OK)
                     {
-                         SLogger.Write("$Start grabbing failed:{ret:x8}", SLogger.LogType.Error);
+                        SLogger.Write("$Start grabbing failed:{ret:x8}", SLogger.LogType.Error);
                         return false;
                     }
                 }
@@ -336,7 +342,7 @@ namespace JYVision.Grab
             return true;
         }
 
-        internal override bool GetResolution(out int width, out int height, out int stride)  //카메라 해상도
+        internal override bool GetResolution(out int width, out int height, out int stride)
         {
             width = 0;
             height = 0;

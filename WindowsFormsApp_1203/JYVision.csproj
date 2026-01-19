@@ -59,6 +59,9 @@
     <Reference Include="log4net">
       <HintPath>C:\Users\user\source\repos\JidamVision4\ExternalLib\Dll\Log4Net\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="MessagingLibrary">
+      <HintPath>..\..\JidamVision4\ExternalLib\Dll\MessagingLibrary\MessagingLibrary.dll</HintPath>
+    </Reference>
     <Reference Include="MvCameraControl.Net">
       <HintPath>..\ExternalLib\HikRobot\MvCameraControl.Net.dll</HintPath>
     </Reference>
@@ -94,6 +97,7 @@
       <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
     <Reference Include="System.Security" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -176,11 +180,19 @@
     </Compile>
     <Compile Include="Inspect\InspResult.cs" />
     <Compile Include="Inspect\SaigeAI.cs" />
+    <Compile Include="Sequence\Communicator.cs" />
+    <Compile Include="Sequence\VisionSequence.cs" />
     <Compile Include="Setting\CameraSetting.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Setting\CameraSetting.Designer.cs">
       <DependentUpon>CameraSetting.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Setting\CommunicatorSetting.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Setting\CommunicatorSetting.Designer.cs">
+      <DependentUpon>CommunicatorSetting.cs</DependentUpon>
     </Compile>
     <Compile Include="Setting\PathSetting.cs">
       <SubType>UserControl</SubType>
@@ -308,6 +320,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\CameraSetting.resx">
       <DependentUpon>CameraSetting.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Setting\CommunicatorSetting.resx">
+      <DependentUpon>CommunicatorSetting.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting\PathSetting.resx">
       <DependentUpon>PathSetting.cs</DependentUpon>

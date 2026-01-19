@@ -17,8 +17,7 @@ namespace JYVision.Inspect
     public class InspWorker
     {
         private CancellationTokenSource _cts = new CancellationTokenSource();
-
-        private InspectBoard _inspectBoard = new InspectBoard();
+        private InspectBoard _InspectBoard = new InspectBoard();
 
         public bool IsRunning { get; set; } = false;
 
@@ -102,7 +101,7 @@ namespace JYVision.Inspect
                 if (!UpdateInspData(inspObj))
                     return false;
 
-                _inspectBoard.Inspect(inspObj);
+                _InspectBoard.Inspect(inspObj);
 
                 DisplayResult(inspObj, inspType);
             }

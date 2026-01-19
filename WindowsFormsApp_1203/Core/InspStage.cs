@@ -21,6 +21,8 @@ using OpenCvSharp.Extensions;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using System.Diagnostics.Eventing.Reader;
+using JYVision.Sequence;
+using System.Data.SqlClient;
 
 namespace JYVision.Core
 {
@@ -31,7 +33,7 @@ namespace JYVision.Core
         private ImageSpace _imageSpace = null;
 
         private GrabModel _grabManager = null;
-        private CameraType _camType = CameraType.WebCam;
+        private CameraType _camType = CameraType.None;
 
         SaigeAI _saigeAI; 
 
@@ -50,8 +52,15 @@ namespace JYVision.Core
 
         public bool UseCamera { get; set; } = false;
 
+        public bool SaveCamImage { get; set; } = false;
+        public int SaveImageIndex { get; set; } = 0;
+
+        private string _capturePath = "";
+
         private string _lotNumber;
         private string _serialID;
+
+        private bool _isInspectMode = false;
 
         public InspStage() { }
         public ImageSpace ImageSpace
@@ -83,7 +92,9 @@ namespace JYVision.Core
 
         public bool Initialize()
         {
-            SLogger.Write("InspStage 초기화");
+            LoadSetting();
+
+            SLogger.Write("InspStage 초기화!");
             _imageSpace = new ImageSpace();
 
             _previewImage = new PreviewImage();
@@ -91,14 +102,15 @@ namespace JYVision.Core
             _inspWorker = new InspWorker();
             _imageLoader = new ImageLoader();
 
-            _regKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\JYVision\InspStage");
+            _regKey = Registry.CurrentUser.CreateSubKey("Software\\JYVision");
 
             _model =new Model();
+            LoadSetting();
 
             switch (_camType)
             {
-                case CameraType.WebCam: _grabManager=new WebCam(); break;
-                case CameraType.HikRobotCam: _grabManager = new HikRobotCam(); break;
+                case CameraType.WebCam: {_grabManager=new WebCam(); break;}
+                case CameraType.HikRobotCam: {_grabManager = new HikRobotCam(); break;}
             }
 
             if (_grabManager != null && _grabManager.InitGrab() == true)
@@ -107,6 +119,9 @@ namespace JYVision.Core
 
                 InitModelGrab(MAX_GRAB_BUF);
             }
+
+            VisionSequence.Inst.InitSequence();
+            VisionSequence.Inst.SeqCommand += SeqCommand;
 
             if (!LastestModelOpen())
             {
@@ -420,6 +435,17 @@ namespace JYVision.Core
             SLogger.Write($"TransferCompleted {bufferIndex}");
 
             _imageSpace.Split(bufferIndex);
+            if (SaveCamImage && Directory.Exists(_capturePath))
+            {
+                Mat curImage = GetMat(0, eImageChannel.Color);
+
+                if (curImage != null)
+                {
+                    string imageName = $"{++SaveImageIndex:D4}.png";
+                    string savePath = Path.Combine(_capturePath, imageName);
+                    curImage.SaveImage(savePath);
+                }
+            }
 
             DisplayGrabImage(bufferIndex);
 
@@ -431,6 +457,9 @@ namespace JYVision.Core
                 await Task.Delay(100);  // 비동기 대기
                 _grabManager.Grab(bufferIndex, true);  // 다음 촬영 시작
             }
+
+            if (_isInspectMode)
+                RunInspect();
         }
 
         private void DisplayGrabImage(int bufferIndex)
@@ -628,6 +657,9 @@ namespace JYVision.Core
             if (_inspWorker != null)
                _inspWorker.Stop();
 
+            VisionSequence.Inst.StopAutoRun();
+            _isInspectMode = false;
+
             SetWorkingState(WorkingState.NONE);
         }
 
@@ -649,6 +681,64 @@ namespace JYVision.Core
             return true;
         }
 
+        private void SeqCommand(object sender, SeqCmd seqCmd, object Param)
+        {
+            switch (seqCmd)
+            {
+                case SeqCmd.InspStart:
+                    {
+                        SLogger.Write("MMI : InspStart", SLogger.LogType.Info);
+
+                        string errMsg;
+
+                        if (UseCamera)
+                        {
+                            if (!Grab(0))
+                            {
+                                errMsg = string.Format("Failed to grab");
+                                SLogger.Write(errMsg, SLogger.LogType.Error);
+                            }
+                        }
+                        else
+                        {
+                            if (!VirtualGrab())
+                            {
+                                errMsg = string.Format("Failed to virtual grab");
+                                SLogger.Write(errMsg, SLogger.LogType.Error);
+                            }
+                        }
+                    }
+                    break;
+                case SeqCmd.InspEnd:
+                    {
+                        SLogger.Write("MMI : InspEnd", SLogger.LogType.Info);
+
+                        string errMsg = "";
+                        SLogger.Write("검사 종료");
+
+                        VisionSequence.Inst.VisionCommand(Vision2Mmi.InspEnd, errMsg);
+                    }
+                    break;
+            }
+        }
+
+        private void RunInspect()
+        {
+            ResetDisplay();
+
+            bool isDefect = false;
+            if (!_inspWorker.RunInspect(out isDefect))
+            {
+                string errMsg = string.Format("Failed to inspect");
+                SLogger.Write(errMsg, SLogger.LogType.Error);
+            }
+
+            //#WCF_FSM#6 비젼 -> 제어에 검사 완료 및 결과 전송
+            VisionSequence.Inst.VisionCommand(Vision2Mmi.InspDone, isDefect);
+        }
+
+
+        //검사를 위한 준비 작업
         public bool InspectReady(string lotNumber, string serialID)
         {
             _lotNumber = lotNumber;
@@ -667,6 +757,32 @@ namespace JYVision.Core
         public bool StartAutoRun()
         {
             SLogger.Write("Action : StartAutoRun");
+            
+            if (SaveCamImage && _model != null)
+            {
+                SaveImageIndex = 0;
+
+                _capturePath = Path.Combine(Path.GetDirectoryName(_model.ModelPath), "Capture");
+                if (!Directory.Exists(_capturePath))
+                {
+                    Directory.CreateDirectory(_capturePath);
+                }
+                else
+                {
+                    string[] files = Directory.GetFiles(_capturePath);
+                    foreach (string file in files)
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                        }
+                        catch (Exception ex)
+                        {
+                            SLogger.Write($"Failed to delete file: {file}. Exception: {ex.Message}", SLogger.LogType.Error);
+                        }
+                    }
+                }
+            }
 
             string modelPath = CurModel.ModelPath;
             if (modelPath == "")
@@ -681,6 +797,9 @@ namespace JYVision.Core
 
             SetWorkingState(WorkingState.INSPECT);
 
+            string modelName = Path.GetFileNameWithoutExtension(modelPath);
+            VisionSequence.Inst.StartAutoRun(modelName);
+            _isInspectMode = true;
             return true;
         }
 
@@ -693,6 +812,15 @@ namespace JYVision.Core
             }
         }
 
+        public void SetExposure(long exposureTime)
+        {
+            if (_grabManager != null)
+            {
+                _grabManager.SetExposureTime(exposureTime);
+            }
+        }
+
+
         #region Disposable
 
         private bool disposed = false;
@@ -703,6 +831,8 @@ namespace JYVision.Core
             {
                 if (disposing)
                 {
+                    VisionSequence.Inst.SeqCommand -= SeqCommand;
+
                     if (_saigeAI != null)
                     {
                         _saigeAI.Dispose();

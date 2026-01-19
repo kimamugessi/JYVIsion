@@ -9,8 +9,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using JYVision.Algorithm;
 using JYVision.Core;
-using System.IO;
-using System.Runtime.Remoting.Channels;
 
 namespace JYVision.Property
 {
@@ -156,6 +154,7 @@ namespace JYVision.Property
             {
                 binRangeTrackbar.SetThreshold(threshold.lower, threshold.upper);
             }
+            
             
             cbBinMethod.SelectedIndex=(int)_blobAlgo.BinMethod;
 

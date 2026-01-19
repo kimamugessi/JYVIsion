@@ -126,7 +126,10 @@ namespace JYVision.Algorithm
 
             if(_srcImage==null) return false;
 
-            if(InspRect.Right>_srcImage.Width||InspRect.Bottom>_srcImage.Height) return false;
+            //검사 영역이 검사 대상 이미지를 벗어나지 않는지 확인
+            if (InspRect.Right > _srcImage.Width ||
+                InspRect.Bottom > _srcImage.Height)
+                return false;
 
             Mat targetImage = _srcImage[InspRect];
 

@@ -284,7 +284,8 @@ namespace JYVision.Property
         {
             if(_blobAlgo == null)
                 return;
-            _blobAlgo.ImageChannel=(eImageChannel)cbChannel.SelectedIndex + 1;
+
+            _blobAlgo.ImageChannel = (eImageChannel)cbChannel.SelectedIndex + 1;
             ImageChannelChanged?.Invoke(this, new ImageChannelEventArgs(_blobAlgo.ImageChannel));
             UpdateBinary();
         }
@@ -339,7 +340,7 @@ namespace JYVision.Property
         }
         private void cbChannel_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (_blobAlgo is null)
+            if (_blobAlgo == null)
                 return;
 
             _blobAlgo.ImageChannel = (eImageChannel)cbChannel.SelectedIndex + 1;
