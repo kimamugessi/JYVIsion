@@ -121,50 +121,55 @@ namespace JYVision.Algorithm
 
         public override bool DoInspect()
         {
+            // 💡 1. 시작하자마자 무조건 상태 초기화
             ResetResult();
+            if (_findArea == null) _findArea = new List<DrawInspectInfo>();
+            _findArea.Clear();
             OutBlobCount = 0;
 
-            if(_srcImage==null) return false;
+            if (_srcImage == null) return false;
 
-            //검사 영역이 검사 대상 이미지를 벗어나지 않는지 확인
-            if (InspRect.Right > _srcImage.Width ||
-                InspRect.Bottom > _srcImage.Height)
+            // 💡 2. 영역 이탈 체크
+            if (InspRect.Right > _srcImage.Width || InspRect.Bottom > _srcImage.Height)
+            {
+                IsInspected = true; // 검사는 시도했음
                 return false;
-
-            Mat targetImage = _srcImage[InspRect];
-
-            Mat grayImage=new Mat();
-            if (targetImage.Type() == MatType.CV_8UC3)
-                Cv2.CvtColor(targetImage, grayImage, ColorConversionCodes.BGR2GRAY);
-            else
-                grayImage = targetImage;
-
-            Mat binaryImage = new Mat();
-            Cv2.InRange(grayImage, BinThreshold.lower, BinThreshold.upper, binaryImage);
-
-            if(BinThreshold.invert)
-                binaryImage=~binaryImage;
-
-            if (BinaryMethod.PixelCount == BinMethod)
-            {
-                if (!InspPixelCount(binaryImage))
-                    return false;
             }
-            else if (BinaryMethod.Feature == BinMethod)
+
+            // 💡 3. 이미지 처리 로직
+            using (Mat targetImage = _srcImage[InspRect])
+            using (Mat grayImage = new Mat())
+            using (Mat binaryImage = new Mat())
             {
-                if (!InspBlobFilter(binaryImage))
-                    return false;
+                if (targetImage.Type() == MatType.CV_8UC3)
+                    Cv2.CvtColor(targetImage, grayImage, ColorConversionCodes.BGR2GRAY);
+                else
+                    targetImage.CopyTo(grayImage);
+
+                Cv2.InRange(grayImage, BinThreshold.lower, BinThreshold.upper, binaryImage);
+                if (BinThreshold.invert) Cv2.BitwiseNot(binaryImage, binaryImage);
+
+                // 💡 4. 실제 검사 수행
+                bool success = false;
+                if (BinMethod == BinaryMethod.PixelCount) success = InspPixelCount(binaryImage);
+                else success = InspBlobFilter(binaryImage);
+
+                // 만약 검출된 게 하나도 없다면 리스트를 다시 한번 비움
+                if (!success || _findArea.Count == 0)
+                {
+                    _findArea.Clear();
+                }
             }
 
             IsInspected = true;
-
             return true;
         }
 
         public override void ResetResult()
         {
             base.ResetResult();
-            if(_findArea!=null) _findArea.Clear();
+            IsInspected = false;
+            if (_findArea != null) _findArea.Clear();
         }
 
         //검사 영역에서 백색 픽셀의 갯수로 OK/NG 여부만 판단
@@ -342,30 +347,33 @@ namespace JYVision.Algorithm
             string result = "OK";
             BlobFilter countFilter = BlobFilters[FILTER_COUNT];
 
+            // 1. 카운트 필터 판정 (isUse가 true일 때만 판정하도록 엄격하게 제한)
             if (countFilter.isUse)
             {
-                if (countFilter.min > 0 && findBlobCount < countFilter.min)
+                if ((countFilter.min > 0 && findBlobCount < countFilter.min) ||
+                    (countFilter.max > 0 && findBlobCount > countFilter.max))
+                {
                     IsDefect = true;
-
-                if (IsDefect == false && countFilter.max > 0 && findBlobCount > countFilter.max)
-                    IsDefect = true;
+                }
             }
-            else
-            {
-                if (_findArea.Count > 0)
-                    IsDefect = true;
-            }
+            // 💡 else일 때 IsDefect = false; 로 두면 '뭐라도 잡히면 NG'라는 상황이 안 생깁니다.
 
+            // 2. 결과 처리
             if (IsDefect)
             {
-                string rectInfo = $"Count:{findBlobCount}";
-                _findArea.Add(new DrawInspectInfo(InspRect, rectInfo, InspectType.InspBinary, DecisionType.Defect));
-
                 result = "NG";
+                // 💡 의심하신 부분: InspRect 전체를 그리는 이 코드가 잔상의 주범입니다. 
+                // 만약 전체 영역이 빨갛게 변하는 게 싫다면 아래 줄을 주석 처리하세요.
+                // string rectInfo = $"Count:{findBlobCount}";
+                // _findArea.Add(new DrawInspectInfo(InspRect, rectInfo, InspectType.InspBinary, DecisionType.Defect));
 
-                string resultInfo = "";
-                resultInfo = $"[{result}] Blob count [in : {countFilter.min},{countFilter.max},out : {findBlobCount}]";
+                string resultInfo = $"[{result}] Blob count [Set: {countFilter.min}~{countFilter.max}, Actual: {findBlobCount}]";
                 ResultString.Add(resultInfo);
+            }
+            else if (findBlobCount == 0 && countFilter.isUse)
+            {
+                // 💡 추가 조치: 아무것도 안 잡혔는데 카운트 필터상 NG라면 리스트를 확실히 비워줍니다.
+                _findArea.Clear();
             }
 
             return true;
@@ -374,16 +382,17 @@ namespace JYVision.Algorithm
         //#8_INSPECT_BINARY#7 검사 결과 영역 영역 반환
         public override int GetResultRect(out List<DrawInspectInfo> resultArea)
         {
-            resultArea = null;
+            // 💡 이전 잔상을 막기 위해 무조건 새 리스트 생성
+            resultArea = new List<DrawInspectInfo>();
 
-            //검사가 완료되지 않았다면, 리턴
-            if (!IsInspected)
-                return -1;
+            // 검사를 안 했거나, 결과 리스트가 비어있으면 아무것도 안 함
+            if (!IsInspected || _findArea == null || _findArea.Count == 0)
+            {
+                return 0;
+            }
 
-            if (_findArea == null || _findArea.Count <= 0)
-                return -1;
-
-            resultArea = _findArea;
+            // 현재 결과만 복사해서 전달
+            resultArea.AddRange(_findArea);
             return resultArea.Count;
         }
     }
