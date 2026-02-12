@@ -21,7 +21,7 @@ namespace JYVision
     //public partial class CameraForm: Form
     public partial class CameraForm : DockContent
     {
-        eImageChannel _currentImageChannel = eImageChannel.Gray;
+        eImageChannel _currentImageChannel = eImageChannel.Color;
         public CameraForm()
         {
             InitializeComponent();

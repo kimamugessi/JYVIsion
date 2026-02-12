@@ -121,6 +121,12 @@ namespace JYVision.Algorithm
 
         public override bool DoInspect()
         {
+            if (!this.IsUse)
+            {
+                ResetResult();
+                return true;
+            }
+
             // 💡 1. 시작하자마자 무조건 상태 초기화
             ResetResult();
             if (_findArea == null) _findArea = new List<DrawInspectInfo>();
