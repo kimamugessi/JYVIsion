@@ -366,48 +366,6 @@ namespace JYVision.Inspect
             }
         }
 
-        // ════════════════════════════════════════════════════════════════
-        // 기존 기능 유지
-        // ════════════════════════════════════════════════════════════════
-        public void RunBoltPairInspect()
-        {
-            Model curMode = Global.Inst.InspStage.CurModel;
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
-            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
-
-            foreach (var window in curMode.InspWindowList)
-            {
-                UpdateInspData(window);
-                var boltAlgo = window.AlgorithmList
-                    .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
-
-                if (boltAlgo != null && boltAlgo.IsUse)
-                {
-                    boltAlgo.DoInspect();
-                    List<Rect> pairROIs = boltAlgo.GetBoltPairROIs();
-
-                    foreach (var roi in pairROIs)
-                    {
-                        displayList.Add(new DrawInspectInfo(
-                            roi, "PairArea", InspectType.InspNone, DecisionType.Good));
-
-                        foreach (var other in window.AlgorithmList
-                            .Where(a => !(a is MatchAlgorithm)))
-                        {
-                            other.InspRect = roi;
-                            other.DoInspect();
-                            List<DrawInspectInfo> res;
-                            other.GetResultRect(out res);
-                            displayList.AddRange(res);
-                        }
-                    }
-                }
-            }
-
-            cameraForm?.ResetDisplay();
-            cameraForm?.AddRect(displayList);
-        }
-
         public void RunCheckMarkContrast()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
@@ -502,16 +460,6 @@ namespace JYVision.Inspect
             if (totalArea.Count > 0)
                 MainForm.GetDockForm<CameraForm>()?.AddRect(totalArea);
             return true;
-        }
-
-        private float GetMedian(List<float> values)
-        {
-            if (values == null || values.Count == 0) return 0f;
-            var sorted = values.OrderBy(v => v).ToList();
-            int mid = sorted.Count / 2;
-            return sorted.Count % 2 == 0
-                ? (sorted[mid - 1] + sorted[mid]) / 2f
-                : sorted[mid];
         }
     }
 }

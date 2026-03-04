@@ -28,7 +28,6 @@ namespace JYVision.Algorithm
         public Size ExtSize { get; set; } = new Size(0, 0);
         public bool InvertResult { get; set; } = false;
         public int OutScore { get; set; } = 0;
-        public Point OutPoint { get; set; } = new Point(0, 0);
         public List<Point> OutPoints { get; set; } = new List<Point>();
         public int MatchCount { get; set; } = 1;
 
@@ -171,16 +170,5 @@ namespace JYVision.Algorithm
             }
             return pairROIs;
         }
-
-        public Mat GetBoltPairImage(int pairIndex)
-        {
-            var pairRois = GetBoltPairROIs();
-            if (pairIndex < 0 || pairIndex >= pairRois.Count || _srcImage == null) return null;
-
-            Rect safeRect = pairRois[pairIndex].Intersect(new Rect(0, 0, _srcImage.Width, _srcImage.Height));
-            return (safeRect.Width <= 0 || safeRect.Height <= 0) ? null : _srcImage.SubMat(safeRect).Clone();
-        }
-
-        public Mat GetPairRoiImage(int pairIndex) => GetBoltPairImage(pairIndex);
     }
 }
