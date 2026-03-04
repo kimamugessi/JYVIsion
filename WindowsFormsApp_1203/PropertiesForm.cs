@@ -72,6 +72,11 @@ namespace JYVision
                     //matchProp.PropertyChanged += PropertyChanged;
                     curProp = matchProp;
                     break;
+                case InspectType.InspBoltROI:
+                    BoltROIProp boltRoiProp = new BoltROIProp();
+                    // 필요한 이벤트 연결이 있다면 여기에 작성 (예: boltRoiProp.PropertyChanged += ...)
+                    curProp = boltRoiProp;
+                    break;
                 case InspectType.InspFilter:
                     ImageFilterProp filterProp = new ImageFilterProp();
                     curProp = filterProp;
@@ -89,9 +94,16 @@ namespace JYVision
 
         public void ShowProperty(InspWindow window)
         {
-            foreach(InspAlgorithm algo in window.AlgorithmList)
+            foreach (InspAlgorithm algo in window.AlgorithmList)
             {
+                // 기본 알고리즘 탭 생성
                 LoadOptionControl(algo.InspectType);
+
+                // 💡 만약 Match(볼트) 알고리즘이 있다면 BoltROIProp 탭도 추가로 생성
+                if (algo.InspectType == InspectType.InspMatch)
+                {
+                    LoadOptionControl(InspectType.InspBoltROI);
+                }
             }
         }
 
@@ -99,11 +111,14 @@ namespace JYVision
         public void UpdateProperty(InspWindow window)
         {
             if (window == null) return;
+
             foreach (TabPage tabPage in tabPropControl.TabPages)
             {
                 if (tabPage.Controls.Count > 0)
                 {
                     UserControl uc = tabPage.Controls[0] as UserControl;
+
+                    // 1. 이진화(Binary) 속성창 업데이트
                     if (uc is BinaryProp binaryProp)
                     {
                         BlobAlgorithm blobAlgo = (BlobAlgorithm)window.FindInspAlgorithm(InspectType.InspBinary);
@@ -111,15 +126,35 @@ namespace JYVision
 
                         binaryProp.SetAlgorithm(blobAlgo);
                     }
+                    // 2. 매칭(Match/Bolt) 속성창 업데이트
                     else if (uc is MatchInspProp matchProp)
                     {
                         MatchAlgorithm matchAlgo = (MatchAlgorithm)window.FindInspAlgorithm(InspectType.InspMatch);
-                        if (matchAlgo is null)
-                            continue;
+                        if (matchAlgo == null) continue;
 
+                        // 패턴 매칭 알고리즘은 화면 갱신 전 티칭 데이터 확인을 위해 호출
                         window.PatternLearn();
-
                         matchProp.SetAlgorithm(matchAlgo);
+                    }
+                    // 3. ✨ 볼트 ROI 테스트 속성창 업데이트 (추가된 부분)
+                    else if (uc is BoltROIProp boltProp)
+                    {
+                        // BoltROIProp은 버튼 동작을 위해 MatchAlgorithm 정보가 필요할 수 있습니다.
+                        MatchAlgorithm matchAlgo = (MatchAlgorithm)window.FindInspAlgorithm(InspectType.InspMatch);
+                        if (matchAlgo == null) continue;
+
+                        // 만약 BoltROIProp 내부에 SetAlgorithm(matchAlgo) 메서드를 만드셨다면 호출하세요.
+                        // boltProp.SetAlgorithm(matchAlgo); 
+                    }
+                    // 4. 이미지 필터 속성창 업데이트
+                    else if (uc is ImageFilterProp filterProp)
+                    {
+                        // Filter 알고리즘 업데이트 로직 (필요시 추가)
+                    }
+                    // 5. AI 모듈 속성창 업데이트
+                    else if (uc is AIModuleProp aiModuleProp)
+                    {
+                        // AI 알고리즘 업데이트 로직 (필요시 추가)
                     }
                 }
             }

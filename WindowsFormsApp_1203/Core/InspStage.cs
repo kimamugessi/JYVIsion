@@ -68,6 +68,7 @@ namespace JYVision.Core
             get => _imageSpace;
         }
 
+
         public SaigeAI AIModule
         {
             get
@@ -89,6 +90,16 @@ namespace JYVision.Core
         public int SelBufferIndex { get; set; } = 0;
         public eImageChannel SelImageChannel { get; set; } = eImageChannel.Gray;
 
+        // InspStage.cs 파일 내 적당한 위치에 추가
+        public void RunOnlyBoltMatch()
+        {
+            _inspWorker.RunOnlyBoltMatch();
+        }
+
+        public void RunBoltPairInspect()
+        {
+            _inspWorker.RunBoltPairInspect();
+        }
 
         public bool Initialize()
         {
@@ -163,48 +174,96 @@ namespace JYVision.Core
             //UpdateProperty();
         }
 
-
-        public void SetImageBuffer(string filePath)
+        public void SaveBoltReferenceFromCurrentImage()
         {
-            SLogger.Write($"Load Image : {filePath}");
+            Model curMode = CurModel;
+            var cameraForm = MainForm.GetDockForm<CameraForm>();
+            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
 
-            Mat matImage = Cv2.ImRead(filePath);
-
-            int pixelBpp = 8;
-            int imageWidth;
-            int imageHeight;
-            int imageStride;
-
-            if (matImage.Type() == MatType.CV_8UC3)
-                pixelBpp = 24;
-
-            imageWidth = (matImage.Width + 3) / 4 * 4;
-            imageHeight = matImage.Height;
-
-            // 4바이트 정렬된 새로운 Mat 생성
-            Mat alignedMat = new Mat();
-            Cv2.CopyMakeBorder(matImage, alignedMat, 0, 0, 0, imageWidth - matImage.Width, BorderTypes.Constant, Scalar.Black);
-
-            imageStride = imageWidth * matImage.ElemSize();
-
-            if (_imageSpace != null)
+            foreach (var window in curMode.InspWindowList)
             {
-                if (_imageSpace.ImageSize.Width != imageWidth || _imageSpace.ImageSize.Height != imageHeight)
+                // ✅ UpdateInspDataPublic → UpdateInspData 로 변경
+                _inspWorker.UpdateInspData(window);
+                var boltAlgo = window.AlgorithmList
+                    .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
+
+                if (boltAlgo != null && boltAlgo.IsUse)
                 {
-                    _imageSpace.SetImageInfo(pixelBpp, imageWidth, imageHeight, imageStride);
-                    SetBuffer(_imageSpace.BufferCount);
+                    boltAlgo.DoInspect();
+                    boltAlgo.GetResultRect(out List<DrawInspectInfo> results);
+
+                    if (results != null && results.Count > 0)
+                    {
+                        _inspWorker.SaveBoltReference(results);
+                        displayList.AddRange(results);
+
+                        MessageBox.Show(
+                            $"Teaching 완료!\n{results.Count}개 볼트 기준 저장됨",
+                            "ROI Set",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "볼트를 감지하지 못했습니다.\n이미지를 확인하세요.",
+                            "ROI Set",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
                 }
             }
 
-            int bufferIndex = 0;
+            cameraForm?.ResetDisplay();
+            cameraForm?.AddRect(displayList);
+        }
+        public void SetImageBuffer(string filePath)
+        {
+            try
+            {
+                if (!File.Exists(filePath)) return;
 
-            // Mat의 데이터를 byte 배열로 복사
-            int bufSize = (int)(alignedMat.Total() * alignedMat.ElemSize());
-            Marshal.Copy(alignedMat.Data, ImageSpace.GetInspectionBuffer(bufferIndex), 0, bufSize);
+                using (Mat matImage = Cv2.ImRead(filePath, ImreadModes.Unchanged))
+                {
+                    if (matImage.Empty()) return;
 
-            _imageSpace.Split(bufferIndex);
+                    // 4바이트 정렬된 가로 너비 및 Stride 계산
+                    int alignedWidth = (matImage.Width + 3) / 4 * 4;
+                    int bytesPerPixel = (int)matImage.ElemSize(); // 채널 수에 따른 바이트 계산
+                    int imageStride = alignedWidth * bytesPerPixel;
 
-            DisplayGrabImage(bufferIndex);
+                    // ImageSpace 버퍼 정보 갱신
+                    if (_imageSpace.ImageSize.Width != alignedWidth || _imageSpace.ImageSize.Height != matImage.Height)
+                    {
+                        _imageSpace.SetImageInfo(bytesPerPixel * 8, alignedWidth, matImage.Height, imageStride);
+                        SetBuffer(_imageSpace.BufferCount);
+                    }
+
+                    // 정렬용 Mat 생성 (원본의 타입과 동일하게 설정)
+                    using (Mat alignedMat = new Mat(matImage.Height, alignedWidth, matImage.Type(), Scalar.Black))
+                    {
+                        // ROI를 이용해 원본 데이터를 정렬용 Mat에 안전하게 복사
+                        matImage.CopyTo(alignedMat[new Rect(0, 0, matImage.Width, matImage.Height)]);
+
+                        long bufSize = alignedMat.Total() * alignedMat.ElemSize();
+                        IntPtr destPtr = ImageSpace.GetnspectionBufferPtr(0);
+
+                        if (destPtr != IntPtr.Zero)
+                        {
+                            // 메모리 직접 복사 (Marshal.Copy 사용 시 버퍼 크기 검증 포함)
+                            byte[] managedBuf = new byte[bufSize];
+                            Marshal.Copy(alignedMat.Data, managedBuf, 0, (int)bufSize);
+                            Marshal.Copy(managedBuf, 0, destPtr, (int)bufSize);
+                        }
+                    }
+                }
+                _imageSpace.Split(0);
+                DisplayGrabImage(0);
+            }
+            catch (Exception ex)
+            {
+                SLogger.Write($"SetImageBuffer 보완 코드 실행 오류: {ex.Message}", SLogger.LogType.Error);
+            }
         }
 
         public void CheckImageBuffer()
@@ -631,26 +690,43 @@ namespace JYVision.Core
             else
                 OneCycle();
         }
-        public bool OneCycle()
+        // InspStage.cs 내부의 실행 로직 보완
+        // InspStage.cs
+        public void OneCycle()
         {
+            bool grabSuccess = false;
+
+            // 1. 이미지 획득 (사진을 다음으로 넘김)
             if (UseCamera)
             {
-                if (!Grab(0))
-                    return false;
+                grabSuccess = Grab(0);
             }
             else
             {
-                if (!VirtualGrab())
-                    return false;
+                grabSuccess = VirtualGrab();
             }
 
+            // 2. 중요: 이미지를 성공적으로 가져왔다면 즉시 검사 실행
+            if (grabSuccess)
+            {
+                RunInspect();
+            }
+        }
+
+        private void RunInspect()
+        {
+            // 이전 ROI 표시 삭제
             ResetDisplay();
 
-            bool isDefect;
-            if (!_inspWorker.RunInspect(out isDefect))
-                return false;
+            bool isDefect = false;
 
-            return true;
+            // ⭐️ 핵심: InspWorker의 RunInspect가 실행될 때 
+            // 반드시 UpdateInspData를 먼저 호출하여 알고리즘에 새 사진을 넣어줘야 함
+            if (_inspWorker.RunInspect(out isDefect))
+            {
+                // 볼트 매칭 후 추가 검사(각인 등) 수행
+                _inspWorker.RunCheckMarkContrast();
+            }
         }
         public void StopCycle()
         {
@@ -722,21 +798,11 @@ namespace JYVision.Core
             }
         }
 
-        private void RunInspect()
+       
+        public void RunCheckMarkContrast()
         {
-            ResetDisplay();
-
-            bool isDefect = false;
-            if (!_inspWorker.RunInspect(out isDefect))
-            {
-                string errMsg = string.Format("Failed to inspect");
-                SLogger.Write(errMsg, SLogger.LogType.Error);
-            }
-
-            //#WCF_FSM#6 비젼 -> 제어에 검사 완료 및 결과 전송
-            VisionSequence.Inst.VisionCommand(Vision2Mmi.InspDone, isDefect);
+            _inspWorker.RunCheckMarkContrast();
         }
-
 
         //검사를 위한 준비 작업
         public bool InspectReady(string lotNumber, string serialID)

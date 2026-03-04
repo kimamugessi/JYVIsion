@@ -301,19 +301,19 @@ namespace JYVision.Sequence
         }
         virtual public void VisionCommand(Vision2Mmi visionCmd, Object e)
         {
-            switch (visionCmd)
-            {
-                case Vision2Mmi.InspDone:
-                    {
-                        //#WCF_FSM#7 제어에 Ng/Good 결과를 담아 검사 완료 명령 전송
-                        bool isDefect = (bool)e;
+            //switch (visionCmd)
+            //{
+            //    case Vision2Mmi.InspDone:
+            //        {
+            //            //#WCF_FSM#7 제어에 Ng/Good 결과를 담아 검사 완료 명령 전송
+            //            bool isDefect = (bool)e;
 
-                        _message.Command = Message.MessageCommand.InspDone;
-                        _message.Status = isDefect ? CommandStatus.Ng : CommandStatus.Good;
-                        SendMessage(_message);
-                    }
-                    break;
-            }
+            //            _message.Command = Message.MessageCommand.InspDone;
+            //            _message.Status = isDefect ? CommandStatus.Ng : CommandStatus.Good;
+            //            SendMessage(_message);
+            //        }
+            //        break;
+            //}
         }
         private void SendError()
         {

@@ -238,6 +238,30 @@ namespace JYVision
 
             this.FormClosed -= CameraForm_FormClosed;
         }
+        // 기존 GetDisplayImage()를 활용하거나 새로운 처리 함수를 만듭니다.
+        public Mat GetEdgeEnhancedImage(eImageChannel channel)
+        {
+            // 1. 원본 이미지 가져오기 (OpenCvSharp의 Mat 형식)
+            Mat src = Global.Inst.InspStage.ImageSpace.GetMat(0, channel);
+            if (src.Empty()) return null;
 
+            Mat processed = new Mat();
+
+            // 2. Grayscale 변환 (이미 Gray면 스킵)
+            if (src.Channels() > 1)
+                Cv2.CvtColor(src, processed, ColorConversionCodes.BGR2GRAY);
+            else
+                src.CopyTo(processed);
+
+            // 3. 가우시안 블러 (노이즈 제거 - 각인이 흐릿할수록 이 단계가 중요!)
+            // 각인이 아주 작다면 Size(3,3), 보통은 (5,5)를 씁니다.
+            Cv2.GaussianBlur(processed, processed, new OpenCvSharp.Size(5, 5), 0);
+
+            // 4. Canny 엣지 검출 (각인의 테두리만 추출)
+            // Threshold1, 2 값을 조절하며 각인이 가장 잘 보이는 수치를 찾으세요.
+            Cv2.Canny(processed, processed, 30, 90);
+
+            return processed;
+        }
     }
 }

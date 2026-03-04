@@ -1,4 +1,8 @@
-﻿using System;
+﻿using JYVision.Algorithm;
+using JYVision.Core;
+using JYVision.Property;
+using JYVision.Teach;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -11,9 +15,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Caching;
 using System.Windows.Forms;
-using JYVision.Algorithm;
-using JYVision.Core;
-using JYVision.Teach;
 
 namespace JYVision.UIControl
 {
@@ -1165,7 +1166,7 @@ namespace JYVision.UIControl
                 DiagramEntityEvent?.Invoke(this, new DiagramEntityEventArgs(EntityActionType.Delete, linkedWindow));
             }
         }
-
+       
 
     }
     #region EventArgs

@@ -422,7 +422,40 @@ namespace JYVision.Algorithm
             }
             return pairROIs;
         }
+        // MatchAlgorithm.cs 내부에 추가
+        // MatchAlgorithm.cs 내부
+        public Mat GetBoltPairImage(int pairIndex)
+        {
+            // 이미 계산된 합쳐진 ROI 리스트 가져오기
+            var pairRois = GetBoltPairROIs();
 
+            if (pairIndex < 0 || pairIndex >= pairRois.Count || _srcImage == null)
+                return null;
+
+            Rect targetRect = pairRois[pairIndex];
+
+            // 이미지 경계를 벗어나지 않도록 교집합 계산
+            Rect safeRect = targetRect.Intersect(new Rect(0, 0, _srcImage.Width, _srcImage.Height));
+
+            if (safeRect.Width <= 0 || safeRect.Height <= 0)
+                return null;
+
+            // 해당 영역을 크롭하여 반환
+            return _srcImage.SubMat(safeRect).Clone();
+        }
+        // MatchAlgorithm.cs 파일 내부
+        public Mat GetPairRoiImage(int pairIndex)
+        {
+            var pairRois = GetBoltPairROIs();
+            if (pairIndex < 0 || pairIndex >= pairRois.Count || _srcImage == null) return null;
+
+            Rect rect = pairRois[pairIndex];
+            Rect safeRect = rect.Intersect(new Rect(0, 0, _srcImage.Width, _srcImage.Height));
+
+            if (safeRect.Width <= 0 || safeRect.Height <= 0) return null;
+
+            return _srcImage.SubMat(safeRect).Clone();
+        }
     }
 
 }
