@@ -140,58 +140,58 @@ namespace JYVision.Inspect
         // ── 매칭된 X 범위에서 Canny 엣지로 실제 건반 상/하단 탐지 ────
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
+            const int EXPECTED_HEIGHT = 1500; // 기준 높이
             int imgH = grayMat.Height;
-            int imgW = grayMat.Width;
 
-            // 탐색 범위: matched X 범위, Y는 위아래로 여유있게
-            int roiX = Math.Max(0, matched.X);
-            int roiW = Math.Min(matched.Width, imgW - roiX);
-            int roiY = Math.Max(0, matched.Y - matched.Height);
-            int roiH = Math.Min(matched.Height * 4, imgH - roiY);
+            // 1. ROI 설정: 건반 하단이 충분히 포함되도록 하되, 너무 바닥까지는 가지 않음
+            int roiY = Math.Max(0, matched.Y - 100);
+            int roiH = Math.Min(imgH - roiY, matched.Height + 250);
+            Rect searchRect = new Rect(matched.X + (int)(matched.Width * 0.2), roiY, (int)(matched.Width * 0.6), roiH);
 
-            if (roiW <= 0 || roiH <= 0)
-                return matched;
-
-            Rect searchRect = new Rect(roiX, roiY, roiW, roiH);
             using (Mat roiGray = new Mat(grayMat, searchRect))
-            using (Mat blurred = new Mat())
             using (Mat edges = new Mat())
             {
-                // 블러 후 엣지 검출
-                Cv2.GaussianBlur(roiGray, blurred, new Size(5, 5), 0);
-                Cv2.Canny(blurred, edges, 30, 90);
-
-                // 각 행의 엣지 픽셀 수 집계
-                int topY = -1;
-                int bottomY = -1;
-
+                Cv2.Canny(roiGray, edges, 40, 120);
+                int[] edgeCounts = new int[edges.Rows];
                 for (int y = 0; y < edges.Rows; y++)
                 {
-                    int edgeCount = 0;
                     for (int x = 0; x < edges.Cols; x++)
-                        if (edges.At<byte>(y, x) > 0) edgeCount++;
-
-                    // 건반 좌우 경계선: 엣지가 일정 수 이상인 행
-                    if (edgeCount >= edges.Cols * 0.15f)
-                    {
-                        if (topY == -1) topY = y;
-                        bottomY = y;
-                    }
+                        if (edges.At<byte>(y, x) > 0) edgeCounts[y]++;
                 }
 
-                // 엣지 못 찾으면 원본 반환
-                if (topY == -1 || bottomY == -1 || bottomY - topY < matched.Height / 2)
+                int topY = -1;
+                int bottomY = -1;
+                int threshold = (int)(edges.Cols * 0.08f);
+
+                // [핵심 수정] 하단 엣지 탐색: ROI의 최하단이 아니라 60%~90% 지점 사이에서만 탐색
+                // 이렇게 하면 바닥 케이스 노이즈를 피하고 실제 스펀지 라인만 잡습니다.
+                int searchStart = (int)(edges.Rows * 0.95);
+                int searchEnd = (int)(edges.Rows * 0.6);
+                for (int y = searchStart; y > searchEnd; y--)
                 {
-                    SLogger.Write($"  엣지 탐지 실패 → 원본 rect 사용");
-                    return matched;
+                    if (edgeCounts[y] >= threshold) { bottomY = y; break; }
                 }
 
-                int actualTop = roiY + topY;
-                int actualBottom = roiY + bottomY;
-                int newH = actualBottom - actualTop;
+                // [상단 엣지 탐색]
+                for (int y = 0; y < edges.Rows * 0.4; y++)
+                {
+                    if (edgeCounts[y] >= threshold) { topY = y; break; }
+                }
 
-                SLogger.Write($"  상단Y={actualTop} 하단Y={actualBottom} H={newH}");
-                return new Rect(matched.X, actualTop, matched.Width, newH);
+                // [안전장치] 하단을 못 찾거나 너무 위에서 잡히면 매칭 데이터 하단값 사용
+                if (bottomY == -1)
+                    bottomY = edges.Rows - 100; // 기본값 강제 할당
+
+                // 상단은 하단 기준으로 역산
+                if (topY == -1) topY = bottomY - EXPECTED_HEIGHT;
+
+                int finalTop = roiY + topY;
+                int finalH = bottomY - topY;
+
+                // 최종 높이가 너무 작아지는 것 방지
+                if (finalH < 1000) finalH = EXPECTED_HEIGHT;
+
+                return new Rect(matched.X, finalTop, matched.Width, finalH);
             }
         }
 
