@@ -42,7 +42,7 @@ namespace JYVision.Algorithm
 
 
 
-        public int MatchScore { get; set; } = 60; // 기본 임계값 60%
+        public int MatchScore { get; set; } = 30; // 기본 임계값 60%
 
 
 

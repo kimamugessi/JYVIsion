@@ -139,27 +139,6 @@ namespace JYVision.Property
                     break;
             }
         }
-        // MatchInspProp.cs 파일 내부
-        public void UpdateSmallPreview(int index)
-        {
-            if (_matchAlgo == null || !_matchAlgo.IsInspected) return;
-
-            using (Mat cropped = _matchAlgo.GetPairRoiImage(index))
-            {
-                if (cropped != null && !cropped.Empty())
-                {
-                    Bitmap bmp = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
-
-                    // 💡 에러 해결 포인트: 
-                    // PatternImageCtrl은 사용자 정의 컨트롤이므로 .Image가 없을 수 있습니다.
-                    // 만약 에러가 난다면 patternImageEditor 내부에 이미지를 넣는 
-                    // 전용 메서드(예: SetImage, UpdatePattern 등)를 찾아야 합니다.
-                    // 일단 가장 일반적인 방법으로 수정합니다.
-
-                    patternImageEditor.BackgroundImage = bmp; // .Image 대신 BackgroundImage 시도
-                    patternImageEditor.Refresh();
-                }
-            }
-        }//
     }
 }
+

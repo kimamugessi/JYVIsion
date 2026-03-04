@@ -18,18 +18,7 @@ namespace JYVision.Inspect
 
         public bool IsRunning { get; set; } = false;
 
-        // ── 볼트 행 기준 데이터 ──────────────────────────────────────────
-        public class BoltRowReference
-        {
-            public float CenterY { get; set; }  // 행 Y 중심
-            public List<float> ExpectedXList { get; set; }  // 실제 볼트 X 좌표 목록
-            public float MatchTolerance { get; set; }  // 매칭 허용 오차
-        }
-
-        public List<BoltRowReference> BoltRowReferences { get; set; }
-
         public InspWorker() { }
-
         public void Stop() { _cts.Cancel(); }
 
         public void StartCycleInspectImage()
@@ -43,9 +32,7 @@ namespace JYVision.Inspect
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
             IsRunning = true;
             while (!token.IsCancellationRequested)
-            {
                 Global.Inst.InspStage.OneCycle();
-            }
             IsRunning = false;
         }
 
@@ -54,15 +41,14 @@ namespace JYVision.Inspect
         {
             isDefect = false;
             Model curMode = Global.Inst.InspStage.CurModel;
-            List<InspWindow> inspWindowList = curMode.InspWindowList;
 
-            foreach (var window in inspWindowList)
+            foreach (var window in curMode.InspWindowList)
                 UpdateInspData(window);
 
             var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> finalDisplayList = new List<DrawInspectInfo>();
 
-            foreach (var inspWindow in inspWindowList)
+            foreach (var inspWindow in curMode.InspWindowList)
             {
                 foreach (var algo in inspWindow.AlgorithmList)
                 {
@@ -73,269 +59,316 @@ namespace JYVision.Inspect
                 }
             }
 
-            RunCheckMarkContrast();
-
             if (cameraForm != null)
             {
                 cameraForm.ResetDisplay();
                 if (finalDisplayList.Count > 0) cameraForm.AddRect(finalDisplayList);
             }
-
             return true;
         }
 
-        // ── Teaching 시 호출: 실제 감지된 X 좌표를 기준으로 저장 ─────────
-        public void SaveBoltReference(List<DrawInspectInfo> results)
+        // ════════════════════════════════════════════════════════════════
+        // 메인 검사: 건반 찾기 → 볼트 확인 → 각인 확인
+        // ════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
+        // 건반 매칭: MatchAlgorithm + 세로 길이 자동 보정
+        // ════════════════════════════════════════════════════════════════
+        public void RunKeyMatch()
         {
-            var yGroups = ClusterAxis(
-                results.Select(r => (float)r.rect.Y).ToList(), 100f);
+            Model curMode = Global.Inst.InspStage.CurModel;
+            var cameraForm = MainForm.GetDockForm<CameraForm>();
+            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
 
-            BoltRowReferences = new List<BoltRowReference>();
+            SLogger.Write("==== 건반 매칭 시작 ====");
 
-            foreach (float cy in yGroups)
+            Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
+            if (colorMat == null || colorMat.Empty())
             {
-                var rowBolts = results
-                    .Where(r => Math.Abs((float)r.rect.Y - cy) < 100f)
-                    .OrderBy(r => r.rect.X)
-                    .ToList();
-
-                var gaps = new List<float>();
-                for (int i = 1; i < rowBolts.Count; i++)
-                    gaps.Add((float)(rowBolts[i].rect.X - rowBolts[i - 1].rect.X));
-
-                float minGap = gaps.Count > 0 ? gaps.Min() : 100f;
-                float tolerance = minGap * 0.45f;
-
-                var expectedXList = rowBolts.Select(r => (float)r.rect.X).ToList();
-
-                BoltRowReferences.Add(new BoltRowReference
-                {
-                    CenterY = cy,
-                    ExpectedXList = expectedXList,
-                    MatchTolerance = tolerance
-                });
-
-                SLogger.Write($"[Teaching] Row Y≈{cy:F0} → " +
-                              $"기준 볼트 {expectedXList.Count}개, " +
-                              $"X위치: [{string.Join(", ", expectedXList.Select(x => $"{x:F0}"))}], " +
-                              $"허용오차: {tolerance:F0}px");
+                SLogger.Write("[Error] 이미지 없음");
+                return;
             }
 
-            SLogger.Write($"[Teaching] 총 {BoltRowReferences.Count}개 행 저장 완료");
+            // ── Step 1. MatchAlgorithm으로 건반 상단 위치 찾기 ──────────
+            var matchedRects = new List<Rect>();
+            foreach (var window in curMode.InspWindowList)
+            {
+                UpdateInspData(window);
+                var matchAlgo = window.AlgorithmList
+                    .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
+                if (matchAlgo == null || !matchAlgo.IsUse) continue;
+
+                matchAlgo.DoInspect();
+                matchAlgo.GetResultRect(out List<DrawInspectInfo> results);
+                if (results == null) continue;
+
+                foreach (var r in results.OrderBy(r => r.rect.X))
+                    matchedRects.Add(r.rect);
+            }
+
+            SLogger.Write($"[매칭] {matchedRects.Count}개 검출");
+
+            if (matchedRects.Count == 0)
+            {
+                SLogger.Write("[Error] 건반 템플릿 매칭 결과 없음");
+                cameraForm?.ResetDisplay();
+                return;
+            }
+
+            // ── Step 2. 각 매칭 위치에서 실제 건반 높이 탐지 ────────────
+            Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
+
+            foreach (var matched in matchedRects)
+            {
+                Rect keyRect = FindActualKeyRect(colorMat, grayMat, matched);
+                SLogger.Write($"[건반] X={keyRect.X} W={keyRect.Width} H={keyRect.Height}");
+
+                displayList.Add(new DrawInspectInfo(
+                    keyRect,
+                    $"Key H={keyRect.Height}",
+                    InspectType.InspNone,
+                    DecisionType.Good));
+            }
+
+            cameraForm?.ResetDisplay();
+            cameraForm?.AddRect(displayList);
+            SLogger.Write($"==== 건반 {displayList.Count}개 완료 ====");
         }
 
-        // ── 볼트 매칭 + 누락 탐지 ───────────────────────────────────────
+        // ── 매칭된 위치에서 실제 건반 Rect 탐지 ─────────────────────────
+        // 방법: 매칭된 rect 중앙 픽셀의 BGR 색상을 기준으로
+        //       위아래로 스캔하여 같은 색상 영역의 실제 경계를 찾음
+        // ── 매칭된 X 범위에서 Canny 엣지로 실제 건반 상/하단 탐지 ────
+        private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
+        {
+            int imgH = grayMat.Height;
+            int imgW = grayMat.Width;
+
+            // 탐색 범위: matched X 범위, Y는 위아래로 여유있게
+            int roiX = Math.Max(0, matched.X);
+            int roiW = Math.Min(matched.Width, imgW - roiX);
+            int roiY = Math.Max(0, matched.Y - matched.Height);
+            int roiH = Math.Min(matched.Height * 4, imgH - roiY);
+
+            if (roiW <= 0 || roiH <= 0)
+                return matched;
+
+            Rect searchRect = new Rect(roiX, roiY, roiW, roiH);
+            using (Mat roiGray = new Mat(grayMat, searchRect))
+            using (Mat blurred = new Mat())
+            using (Mat edges = new Mat())
+            {
+                // 블러 후 엣지 검출
+                Cv2.GaussianBlur(roiGray, blurred, new Size(5, 5), 0);
+                Cv2.Canny(blurred, edges, 30, 90);
+
+                // 각 행의 엣지 픽셀 수 집계
+                int topY = -1;
+                int bottomY = -1;
+
+                for (int y = 0; y < edges.Rows; y++)
+                {
+                    int edgeCount = 0;
+                    for (int x = 0; x < edges.Cols; x++)
+                        if (edges.At<byte>(y, x) > 0) edgeCount++;
+
+                    // 건반 좌우 경계선: 엣지가 일정 수 이상인 행
+                    if (edgeCount >= edges.Cols * 0.15f)
+                    {
+                        if (topY == -1) topY = y;
+                        bottomY = y;
+                    }
+                }
+
+                // 엣지 못 찾으면 원본 반환
+                if (topY == -1 || bottomY == -1 || bottomY - topY < matched.Height / 2)
+                {
+                    SLogger.Write($"  엣지 탐지 실패 → 원본 rect 사용");
+                    return matched;
+                }
+
+                int actualTop = roiY + topY;
+                int actualBottom = roiY + bottomY;
+                int newH = actualBottom - actualTop;
+
+                SLogger.Write($"  상단Y={actualTop} 하단Y={actualBottom} H={newH}");
+                return new Rect(matched.X, actualTop, matched.Width, newH);
+            }
+        }
+
         public void RunOnlyBoltMatch()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
             var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
 
-            foreach (var window in curMode.InspWindowList)
+            SLogger.Write("==== 건반 검사 시작 ====");
+
+            // ── Step 1. MatchAlgorithm으로 건반 위치 찾기 ────────────────
+            List<Rect> keyRects = FindKeysByMatchAlgorithm(curMode);
+
+            if (keyRects.Count == 0)
             {
-                UpdateInspData(window);
-                var boltAlgo = window.AlgorithmList
-                    .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
-
-                if (boltAlgo != null && boltAlgo.IsUse)
-                {
-                    boltAlgo.DoInspect();
-                    List<DrawInspectInfo> results;
-                    boltAlgo.GetResultRect(out results);
-
-                    if (results != null && results.Count > 0)
-                    {
-                        // ✅ Teaching 체크 없이 바로 간격 분석 실행
-                        DetectMissingBolts(results, displayList);
-                    }
-                    else
-                    {
-                        SLogger.Write("[Info] 볼트 감지 결과 없음");
-                    }
-                }
+                SLogger.Write("[Error] 건반을 감지하지 못했습니다.");
+                cameraForm?.ResetDisplay();
+                return;
             }
+
+            SLogger.Write($"[건반] {keyRects.Count}개 감지: {string.Join(", ", keyRects.Select(r => $"X={r.X}"))}");
+
+            // ── Step 2. 각 건반마다 볼트 & 각인 확인 ─────────────────────
+            Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
+
+            int pass = 0;
+            int fail = 0;
+
+            foreach (Rect key in keyRects)
+            {
+                // 건반 ROI 표시 (파란 박스)
+                displayList.Add(new DrawInspectInfo(
+                    key, $"Key", InspectType.InspNone, DecisionType.Good));
+
+                bool topBoltOk = CheckBolt(grayMat, key, BoltPosition.Top, displayList);
+                bool bottomBoltOk = CheckBolt(grayMat, key, BoltPosition.Bottom, displayList);
+                bool markOk = CheckMark(grayMat, key, displayList);
+
+                bool keyOk = topBoltOk && bottomBoltOk && markOk;
+
+                SLogger.Write($"[건반 X={key.X}] 상단볼트:{(topBoltOk ? "OK" : "FAIL")} " +
+                              $"하단볼트:{(bottomBoltOk ? "OK" : "FAIL")} " +
+                              $"각인:{(markOk ? "OK" : "FAIL")}");
+
+                if (keyOk) pass++;
+                else fail++;
+            }
+
+            SLogger.Write($"==== 결과: PASS {pass}개 / FAIL {fail}개 ====");
 
             cameraForm?.ResetDisplay();
             cameraForm?.AddRect(displayList);
         }
 
-        // ── Teaching 기준 위치 근처에 있는 결과만 통과 (오탐 제거) ─────────
-        private List<DrawInspectInfo> FilterByReference(List<DrawInspectInfo> results)
+        // ── Step 1: MatchAlgorithm으로 건반 위치 찾기 ───────────────────
+        private List<Rect> FindKeysByMatchAlgorithm(Model curMode)
         {
-            var filtered = new List<DrawInspectInfo>();
+            List<Rect> keyRects = new List<Rect>();
 
-            foreach (var r in results)
+            foreach (var window in curMode.InspWindowList)
             {
-                float rx = (float)r.rect.X;
-                float ry = (float)r.rect.Y;
+                UpdateInspData(window);
 
-                bool isNearReference = BoltRowReferences.Any(row =>
-                    Math.Abs(ry - row.CenterY) < 100f &&
-                    row.ExpectedXList.Any(ex =>
-                        Math.Abs(rx - ex) < row.MatchTolerance
-                    )
-                );
+                var matchAlgo = window.AlgorithmList
+                    .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
 
-                if (isNearReference)
-                    filtered.Add(r);
-                else
-                    SLogger.Write($"  [오탐제거] X≈{rx:F0}, Y≈{ry:F0} → 기준 위치 아님");
+                if (matchAlgo == null || !matchAlgo.IsUse) continue;
+
+                matchAlgo.DoInspect();
+                matchAlgo.GetResultRect(out List<DrawInspectInfo> results);
+
+                if (results == null || results.Count == 0) continue;
+
+                // 결과 rect를 건반 ROI로 사용 (X 오름차순 정렬)
+                foreach (var r in results.OrderBy(r => r.rect.X))
+                    keyRects.Add(r.rect);
             }
 
-            SLogger.Write($"[FilterByReference] {results.Count}개 → {filtered.Count}개 (제거: {results.Count - filtered.Count}개)");
-            return filtered;
+            return keyRects;
         }
 
-        // ── 누락 볼트 탐지 ───────────────────────────────────────────────
-        private void DetectMissingBolts(List<DrawInspectInfo> results, List<DrawInspectInfo> displayList)
+        // ── 볼트 위치 enum ───────────────────────────────────────────────
+        private enum BoltPosition { Top, Bottom }
+
+        // ── Step 2-A: 볼트 확인 ─────────────────────────────────────────
+        // 건반 상단(15~25%) 또는 하단(75~85%) 영역의 픽셀 분석
+        private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos,
+                                List<DrawInspectInfo> displayList)
         {
-            SLogger.Write("==== Missing Bolt Detection Start ====");
+            // 볼트 ROI 비율 설정
+            float yRatioCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
+            float yRatioHalf = 0.07f;  // 위아래로 7% 범위
 
-            int boltSize = results[0].rect.Width > 0 ? results[0].rect.Width : 60;
+            int roiX = key.X + (int)(key.Width * 0.15f);
+            int roiW = (int)(key.Width * 0.70f);
+            int roiY = key.Y + (int)(key.Height * (yRatioCenter - yRatioHalf));
+            int roiH = (int)(key.Height * yRatioHalf * 2f);
 
-            // ── 1. 전체 Y값 출력 ─────────────────────────────────────────────
-            var allYValues = results.Select(r => (float)r.rect.Y).OrderBy(y => y).ToList();
-            SLogger.Write($"[RAW Y값] {string.Join(", ", allYValues.Select(y => $"{y:F0}"))}");
+            // 이미지 경계 클램핑
+            roiX = Math.Max(0, roiX);
+            roiY = Math.Max(0, roiY);
+            roiW = Math.Min(roiW, grayMat.Width - roiX);
+            roiH = Math.Min(roiH, grayMat.Height - roiY);
 
-            // ── 2. Y로 상단/하단 완전 분리 (큰 gap 기준) ─────────────────────
-            var sortedY = allYValues.Distinct().OrderBy(y => y).ToList();
-            float biggestYGap = 0;
-            float splitY = 0;
-            for (int i = 1; i < sortedY.Count; i++)
+            if (roiW <= 0 || roiH <= 0) return false;
+
+            Rect boltRoi = new Rect(roiX, roiY, roiW, roiH);
+
+            using (Mat roiMat = new Mat(grayMat, boltRoi))
             {
-                float gap = sortedY[i] - sortedY[i - 1];
-                if (gap > biggestYGap)
-                {
-                    biggestYGap = gap;
-                    splitY = (sortedY[i] + sortedY[i - 1]) / 2f;
-                }
+                // 볼트는 어두운 원형 → 평균 밝기가 낮고 표준편차가 큼
+                Cv2.MeanStdDev(roiMat, out Scalar mean, out Scalar stddev);
+
+                double avgBrightness = mean.Val0;
+                double stdDev = stddev.Val0;
+
+                // 볼트 판단 기준:
+                // - 평균 밝기 < 180 (볼트의 어두운 금속)
+                // - 표준편차 > 15  (밝기 변화 있음 = 볼트 형태)
+                bool boltFound = avgBrightness < 180.0 && stdDev > 15.0;
+
+                string label = pos == BoltPosition.Top ? "상단볼트" : "하단볼트";
+                string resultText = boltFound
+                    ? $"{label} OK ({avgBrightness:F0}/{stdDev:F1})"
+                    : $"{label} MISSING ({avgBrightness:F0}/{stdDev:F1})";
+
+                DecisionType dec = boltFound ? DecisionType.Good : DecisionType.Defect;
+                displayList.Add(new DrawInspectInfo(boltRoi, resultText, InspectType.InspNone, dec));
+
+                SLogger.Write($"  [{label}] avg={avgBrightness:F1}, std={stdDev:F1} → {(boltFound ? "OK" : "MISSING")}");
+                return boltFound;
             }
-            SLogger.Write($"[Y 분할 기준] splitY={splitY:F0}, 최대 Y간격={biggestYGap:F0}");
-
-            // 상단 그룹 / 하단 그룹으로 완전 분리
-            var topGroup = results.Where(r => (float)r.rect.Y < splitY).ToList();
-            var bottomGroup = results.Where(r => (float)r.rect.Y >= splitY).ToList();
-
-            SLogger.Write($"[상단 그룹] {topGroup.Count}개, [하단 그룹] {bottomGroup.Count}개");
-
-            // ── 3. 각 그룹 독립 처리 ─────────────────────────────────────────
-            ProcessGroup("상단(작은건반)", topGroup, displayList, boltSize);
-            ProcessGroup("하단(긴건반)", bottomGroup, displayList, boltSize);
-
-            SLogger.Write("======================================");
         }
 
-        private void ProcessGroup(string label, List<DrawInspectInfo> groupBolts,
-                           List<DrawInspectInfo> displayList, int boltSize)
+        // ── Step 2-B: 각인 확인 ─────────────────────────────────────────
+        // 건반 하단 60~80% 영역의 픽셀 분석
+        private bool CheckMark(Mat grayMat, Rect key,
+                                List<DrawInspectInfo> displayList)
         {
-            if (groupBolts.Count == 0) return;
-            SLogger.Write($"\n── [{label}] 처리 시작 ──");
+            int roiX = key.X + (int)(key.Width * 0.10f);
+            int roiW = (int)(key.Width * 0.80f);
+            int roiY = key.Y + (int)(key.Height * 0.60f);
+            int roiH = (int)(key.Height * 0.20f);
 
-            var yRows = ClusterAxis(
-                groupBolts.Select(r => (float)r.rect.Y).ToList(), 80f);
+            roiX = Math.Max(0, roiX);
+            roiY = Math.Max(0, roiY);
+            roiW = Math.Min(roiW, grayMat.Width - roiX);
+            roiH = Math.Min(roiH, grayMat.Height - roiY);
 
-            var detectedCols = ClusterAxis(
-                groupBolts.Select(r => (float)r.rect.X).ToList(), 80f);
+            if (roiW <= 0 || roiH <= 0) return false;
 
-            SLogger.Write($"  감지된 열: {detectedCols.Count}개 → {string.Join(", ", detectedCols.Select(x => $"{x:F0}"))}");
-            SLogger.Write($"  Y행: {yRows.Count}개 → {string.Join(", ", yRows.Select(y => $"{y:F0}"))}");
+            Rect markRoi = new Rect(roiX, roiY, roiW, roiH);
 
-            if (detectedCols.Count < 2)
+            using (Mat roiMat = new Mat(grayMat, markRoi))
             {
-                displayList.AddRange(groupBolts);
-                return;
-            }
+                // 각인은 표면에 눌린 자국 → 표준편차가 일정 수준 이상
+                Cv2.MeanStdDev(roiMat, out Scalar mean, out Scalar stddev);
 
-            var colGaps = new List<float>();
-            for (int i = 1; i < detectedCols.Count; i++)
-                colGaps.Add(detectedCols[i] - detectedCols[i - 1]);
+                double stdDev = stddev.Val0;
+                bool markFound = stdDev > 5.0;  // 각인 있으면 명암 변화 큼
 
-            float medianGap = GetMedian(colGaps);
-            // ✅ 매칭 오차: 간격의 45% (넉넉하게)
-            float xTol = medianGap * 0.45f;
-            float yTol = 120f;
+                string resultText = markFound
+                    ? $"각인 OK ({stdDev:F1})"
+                    : $"각인 NG ({stdDev:F1})";
 
-            SLogger.Write($"  기준 열 간격: {medianGap:F0}px, X오차: {xTol:F0}px, Y오차: {yTol:F0}px");
+                DecisionType dec = markFound ? DecisionType.Good : DecisionType.Defect;
+                displayList.Add(new DrawInspectInfo(markRoi, resultText, InspectType.InspNone, dec));
 
-            // ── 빠진 열 예측 ─────────────────────────────────────────────────
-            var allCols = new List<float> { detectedCols[0] };
-            for (int i = 1; i < detectedCols.Count; i++)
-            {
-                float gap = detectedCols[i] - detectedCols[i - 1];
-                int missingCnt = (int)Math.Round(gap / medianGap) - 1;
-                for (int m = 1; m <= missingCnt; m++)
-                {
-                    float px = detectedCols[i - 1] + medianGap * m;
-                    allCols.Add(px);
-                    SLogger.Write($"  ★ 예측 열 삽입 X≈{px:F0}");
-                }
-                allCols.Add(detectedCols[i]);
-            }
-            allCols = allCols.OrderBy(x => x).ToList();
-
-            // ── 유효 행 판단 (볼트 존재 비율 50% 이상) ───────────────────────
-            var validYRows = new List<float>();
-            foreach (float ey in yRows)
-            {
-                int foundCount = allCols.Count(cx =>
-                    groupBolts.Any(r =>
-                        Math.Abs((float)r.rect.X - cx) < xTol &&
-                        Math.Abs((float)r.rect.Y - ey) < yTol));
-
-                float ratio = (float)foundCount / allCols.Count;
-                SLogger.Write($"  Y≈{ey:F0} 존재 비율: {foundCount}/{allCols.Count} = {ratio:P0}");
-
-                if (ratio >= 0.5f)
-                    validYRows.Add(ey);
-            }
-
-            SLogger.Write($"  유효 Y행: {validYRows.Count}개 → {string.Join(", ", validYRows.Select(y => $"{y:F0}"))}");
-
-            // ── 각 열 × 유효 행 확인 ─────────────────────────────────────────
-            var alreadyAdded = new HashSet<DrawInspectInfo>();
-
-            foreach (float cx in allCols)
-            {
-                // ✅ 실제 볼트 매칭 시 xTol 사용 (넉넉하게)
-                var colBolts = groupBolts
-                    .Where(r => Math.Abs((float)r.rect.X - cx) < xTol)
-                    .ToList();
-
-                foreach (float ey in validYRows)
-                {
-                    // ✅ 가장 가까운 볼트로 매칭 (tolerance 대신 nearest 방식)
-                    var nearest = colBolts
-                        .OrderBy(r => Math.Abs((float)r.rect.Y - ey))
-                        .FirstOrDefault();
-
-                    bool found = nearest != null && Math.Abs((float)nearest.rect.Y - ey) < yTol;
-
-                    if (!found)
-                    {
-                        SLogger.Write($"  [MISSING] X≈{cx:F0}, Y≈{ey:F0}");
-                        displayList.Add(new DrawInspectInfo(
-                            new Rect(
-                                (int)cx - boltSize / 2,
-                                (int)ey - boltSize / 2,
-                                boltSize, boltSize),
-                            "MISSING",
-                            InspectType.InspNone,
-                            DecisionType.Defect));
-                    }
-                    else
-                    {
-                        SLogger.Write($"  [OK] X≈{cx:F0}, Y≈{ey:F0} (실제 Y={nearest.rect.Y})");
-                    }
-                }
-
-                foreach (var b in colBolts.Where(b => !alreadyAdded.Contains(b)))
-                {
-                    displayList.Add(b);
-                    alreadyAdded.Add(b);
-                }
+                SLogger.Write($"  [각인] std={stdDev:F1} → {(markFound ? "OK" : "NG")}");
+                return markFound;
             }
         }
-        // ── 볼트 짝지기 ROI 검사 ─────────────────────────────────────────
+
+        // ════════════════════════════════════════════════════════════════
+        // 기존 기능 유지
+        // ════════════════════════════════════════════════════════════════
         public void RunBoltPairInspect()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
@@ -356,8 +389,7 @@ namespace JYVision.Inspect
                     foreach (var roi in pairROIs)
                     {
                         displayList.Add(new DrawInspectInfo(
-                            roi, "                   PairArea",
-                            InspectType.InspNone, DecisionType.Good));
+                            roi, "PairArea", InspectType.InspNone, DecisionType.Good));
 
                         foreach (var other in window.AlgorithmList
                             .Where(a => !(a is MatchAlgorithm)))
@@ -376,7 +408,6 @@ namespace JYVision.Inspect
             cameraForm?.AddRect(displayList);
         }
 
-        // ── 각인 대조 검사 ───────────────────────────────────────────────
         public void RunCheckMarkContrast()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
@@ -413,10 +444,11 @@ namespace JYVision.Inspect
                             double score = stddev.Val0;
                             bool isExist = score > 5.0;
                             DecisionType dec = isExist ? DecisionType.Good : DecisionType.Defect;
-                            string resultText = $"Mark: {(isExist ? "OK" : "NG")} ({score:F1})";
 
                             displayList.Add(new DrawInspectInfo(
-                                markRoi, resultText, InspectType.InspNone, dec));
+                                markRoi,
+                                $"Mark: {(isExist ? "OK" : "NG")} ({score:F1})",
+                                InspectType.InspNone, dec));
                         }
                     }
                 }
@@ -441,8 +473,6 @@ namespace JYVision.Inspect
             }
             return true;
         }
-
-        // ── 공통 유틸 ────────────────────────────────────────────────────
 
         public bool UpdateInspData(InspWindow inspWindow)
         {
@@ -474,30 +504,6 @@ namespace JYVision.Inspect
             return true;
         }
 
-        /// <summary>1D 좌표를 tolerance 기준으로 클러스터링 → 각 클러스터 중심 반환</summary>
-        private List<float> ClusterAxis(List<float> values, float tolerance)
-        {
-            var sorted = values.OrderBy(v => v).ToList();
-            var clusters = new List<List<float>>();
-
-            foreach (float val in sorted)
-            {
-                var cluster = clusters.FirstOrDefault(c =>
-                    Math.Abs(c.Average() - val) < tolerance);
-
-                if (cluster != null)
-                    cluster.Add(val);
-                else
-                    clusters.Add(new List<float> { val });
-            }
-
-            return clusters
-                .Select(c => c.Average())
-                .OrderBy(v => v)
-                .ToList();
-        }
-
-        /// <summary>float 리스트의 중앙값 반환</summary>
         private float GetMedian(List<float> values)
         {
             if (values == null || values.Count == 0) return 0f;

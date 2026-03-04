@@ -35,19 +35,19 @@
             // 
             // btnSetROI
             // 
-            this.btnSetROI.Location = new System.Drawing.Point(16, 47);
+            this.btnSetROI.Location = new System.Drawing.Point(16, 16);
             this.btnSetROI.Name = "btnSetROI";
-            this.btnSetROI.Size = new System.Drawing.Size(70, 22);
+            this.btnSetROI.Size = new System.Drawing.Size(106, 22);
             this.btnSetROI.TabIndex = 1;
-            this.btnSetROI.Text = "ROI Set";
+            this.btnSetROI.Text = "Matching";
             this.btnSetROI.UseVisualStyleBackColor = true;
-            this.btnSetROI.Click += new System.EventHandler(this.button1_Click);
+            this.btnSetROI.Click += new System.EventHandler(this.btnKeyMatch_Click);
             // 
             // btnBoltROI
             // 
-            this.btnBoltROI.Location = new System.Drawing.Point(16, 19);
+            this.btnBoltROI.Location = new System.Drawing.Point(16, 47);
             this.btnBoltROI.Name = "btnBoltROI";
-            this.btnBoltROI.Size = new System.Drawing.Size(80, 22);
+            this.btnBoltROI.Size = new System.Drawing.Size(106, 22);
             this.btnBoltROI.TabIndex = 1;
             this.btnBoltROI.Text = "Bolt ROI";
             this.btnBoltROI.UseVisualStyleBackColor = true;

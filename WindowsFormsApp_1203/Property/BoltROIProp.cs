@@ -20,18 +20,18 @@ namespace JYVision.Property
             InitializeComponent();
         }
 
-        // Bolt ROI 버튼 - 볼트 감지 + 누락 탐지
+        // 건반 매칭 버튼 - 건반 위치 감지 (세로 길이 자동 보정)
+        private void btnKeyMatch_Click(object sender, EventArgs e)
+        {
+            var stage = Global.Inst.InspStage;
+            stage.RunKeyMatch();
+        }
+
+        // Bolt ROI 버튼 - 건반 기준 볼트 확인 + 각인 확인
         private void btnBoltROI_Click(object sender, EventArgs e)
         {
             var stage = Global.Inst.InspStage;
             stage.RunOnlyBoltMatch();
-        }
-
-        // ROI Set 버튼 - ✅ Teaching: 현재 이미지의 볼트 위치를 기준으로 저장
-        private void button1_Click(object sender, EventArgs e)
-        {
-            var stage = Global.Inst.InspStage;
-            stage.SaveBoltReferenceFromCurrentImage();
         }
 
         // Check Mark 버튼 - 각인 대조 검사
