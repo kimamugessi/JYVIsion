@@ -147,7 +147,7 @@
             // 
             // edge
             // 
-            this.edge.Location = new System.Drawing.Point(234, 115);
+            this.edge.Location = new System.Drawing.Point(231, 105);
             this.edge.Name = "edge";
             this.edge.Size = new System.Drawing.Size(80, 62);
             this.edge.TabIndex = 4;
