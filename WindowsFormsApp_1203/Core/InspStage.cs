@@ -83,12 +83,6 @@ namespace JYVision.Core
             _inspWorker.RunOnlyBoltMatch();
         }
 
-        /// <summary>볼트 짝지기 ROI 검사</summary>
-        public void RunBoltPairInspect()
-        {
-            _inspWorker.RunBoltPairInspect();
-        }
-
         /// <summary>각인 대조 검사</summary>
         public void RunCheckMarkContrast()
         {
