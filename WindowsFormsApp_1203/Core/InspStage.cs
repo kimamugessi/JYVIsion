@@ -69,6 +69,7 @@ namespace JYVision.Core
 
         public InspStage() { }
 
+
         // ── 외부 호출 진입점 ─────────────────────────────────────────────
 
         /// <summary>건반 위치 감지 (세로 길이 자동 보정)</summary>

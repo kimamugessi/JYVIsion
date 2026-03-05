@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using JYVision.Algorithm;
+﻿using JYVision.Algorithm;
 using JYVision.Core;
 using JYVision.Teach;
 using JYVision.Util;
 using OpenCvSharp;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms.VisualStyles;
 
 namespace JYVision.Inspect
 {
@@ -26,7 +27,7 @@ namespace JYVision.Inspect
             _cts = new CancellationTokenSource();
             Task.Run(() => InspectionLoop(this, _cts.Token));
         }
-
+        private List<Rect> _lastMatchedKeyRects = new List<Rect>();
         private void InspectionLoop(InspWorker inspWorker, CancellationToken token)
         {
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
@@ -81,6 +82,9 @@ namespace JYVision.Inspect
 
             SLogger.Write("==== 건반 매칭 시작 ====");
 
+            // 1. 기존에 저장된 좌표 데이터 초기화
+            _lastMatchedKeyRects.Clear();
+
             Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
             if (colorMat == null || colorMat.Empty())
             {
@@ -95,12 +99,15 @@ namespace JYVision.Inspect
                 UpdateInspData(window);
                 var matchAlgo = window.AlgorithmList
                     .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
+
                 if (matchAlgo == null || !matchAlgo.IsUse) continue;
 
                 matchAlgo.DoInspect();
                 matchAlgo.GetResultRect(out List<DrawInspectInfo> results);
+
                 if (results == null) continue;
 
+                // X축 순서대로 정렬하여 리스트에 추가
                 foreach (var r in results.OrderBy(r => r.rect.X))
                     matchedRects.Add(r.rect);
             }
@@ -114,12 +121,17 @@ namespace JYVision.Inspect
                 return;
             }
 
-            // ── Step 2. 각 매칭 위치에서 실제 건반 높이 탐지 ────────────
+            // ── Step 2. 각 매칭 위치에서 실제 건반 높이 탐지 및 저장 ────────────
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
 
             foreach (var matched in matchedRects)
             {
+                // 알고리즘으로 실제 건반의 경계를 찾아 ROI 보정
                 Rect keyRect = FindActualKeyRect(colorMat, grayMat, matched);
+                
+                // [핵심] 보정된 ROI를 멤버 변수에 저장 (RunOnlyBoltMatch에서 사용됨)
+                _lastMatchedKeyRects.Add(keyRect);
+
                 SLogger.Write($"[건반] X={keyRect.X} W={keyRect.Width} H={keyRect.Height}");
 
                 displayList.Add(new DrawInspectInfo(
@@ -140,18 +152,27 @@ namespace JYVision.Inspect
         // ── 매칭된 X 범위에서 Canny 엣지로 실제 건반 상/하단 탐지 ────
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
-            const int EXPECTED_HEIGHT = 1500; // 기준 높이
+            const int EXPECTED_HEIGHT = 2500;
             int imgH = grayMat.Height;
 
-            // 1. ROI 설정: 건반 하단이 충분히 포함되도록 하되, 너무 바닥까지는 가지 않음
-            int roiY = Math.Max(0, matched.Y - 100);
-            int roiH = Math.Min(imgH - roiY, matched.Height + 250);
-            Rect searchRect = new Rect(matched.X + (int)(matched.Width * 0.2), roiY, (int)(matched.Width * 0.6), roiH);
+            // 1. ROI 설정: 매칭된 영역을 기준으로 상하 여백 할당
+            int roiY = Math.Max(0, matched.Y - 150);
+            int roiH = Math.Min(imgH - roiY, matched.Height + 300);
+
+            // 가로 탐색 폭 축소: 측면 그림자/노이즈를 피하기 위해 정중앙 40% 영역만 집중 검사
+            Rect searchRect = new Rect(matched.X + (int)(matched.Width * 0.3), roiY, (int)(matched.Width * 0.4), roiH);
 
             using (Mat roiGray = new Mat(grayMat, searchRect))
+            using (Mat blurred = new Mat())
             using (Mat edges = new Mat())
             {
-                Cv2.Canny(roiGray, edges, 40, 120);
+                // [핵심 수정 1] 가우시안 블러 추가: 각인(글씨)이나 자잘한 표면 스크래치 무시
+                Cv2.GaussianBlur(roiGray, blurred, new OpenCvSharp.Size(5, 5), 0);
+
+                // Canny 임계값 조정 (노이즈 억제)
+                Cv2.Canny(blurred, edges, 40, 120);
+
+                // 수평 투영(Horizontal Projection) - 각 행의 엣지 픽셀 개수 계산
                 int[] edgeCounts = new int[edges.Rows];
                 for (int y = 0; y < edges.Rows; y++)
                 {
@@ -161,35 +182,56 @@ namespace JYVision.Inspect
 
                 int topY = -1;
                 int bottomY = -1;
-                int threshold = (int)(edges.Cols * 0.08f);
 
-                // [핵심 수정] 하단 엣지 탐색: ROI의 최하단이 아니라 60%~90% 지점 사이에서만 탐색
-                // 이렇게 하면 바닥 케이스 노이즈를 피하고 실제 스펀지 라인만 잡습니다.
-                int searchStart = (int)(edges.Rows * 0.95);
-                int searchEnd = (int)(edges.Rows * 0.6);
-                for (int y = searchStart; y > searchEnd; y--)
+                // 임계값 상향: 전체 너비의 15% 이상 차지하는 뚜렷한 수평선만 취급
+                int threshold = (int)(edges.Cols * 0.15f);
+
+                // [핵심 수정 2] 초기 매칭 좌표(matched) 기반의 예상 위치 산출
+                int expectedTopInRoi = matched.Y - roiY;
+                int expectedBottomInRoi = (matched.Y + matched.Height) - roiY;
+
+                // [핵심 수정 3] 상단 탐색: 예상 위치 상하 100px 내에서 '가장 강한(엣지가 많은)' 선 탐색
+                int maxTopEdge = 0;
+                int searchTopStart = Math.Max(0, expectedTopInRoi - 100);
+                int searchTopEnd = Math.Min(edges.Rows - 1, expectedTopInRoi + 100);
+
+                for (int y = searchTopStart; y <= searchTopEnd; y++)
                 {
-                    if (edgeCounts[y] >= threshold) { bottomY = y; break; }
+                    if (edgeCounts[y] >= threshold && edgeCounts[y] > maxTopEdge)
+                    {
+                        maxTopEdge = edgeCounts[y];
+                        topY = y;
+                    }
                 }
 
-                // [상단 엣지 탐색]
-                for (int y = 0; y < edges.Rows * 0.4; y++)
+                // [핵심 수정 4] 하단 탐색: 예상 위치 상하 150px 내에서 '가장 강한' 선 탐색
+                int maxBottomEdge = 0;
+                int searchBottomStart = Math.Min(edges.Rows - 1, expectedBottomInRoi + 150);
+                int searchBottomEnd = Math.Max(0, expectedBottomInRoi - 150);
+
+                // 하단은 아래에서 위로 훑어 올라감
+                for (int y = searchBottomStart; y >= searchBottomEnd; y--)
                 {
-                    if (edgeCounts[y] >= threshold) { topY = y; break; }
+                    if (edgeCounts[y] >= threshold && edgeCounts[y] > maxBottomEdge)
+                    {
+                        maxBottomEdge = edgeCounts[y];
+                        bottomY = y;
+                    }
                 }
 
-                // [안전장치] 하단을 못 찾거나 너무 위에서 잡히면 매칭 데이터 하단값 사용
-                if (bottomY == -1)
-                    bottomY = edges.Rows - 100; // 기본값 강제 할당
-
-                // 상단은 하단 기준으로 역산
-                if (topY == -1) topY = bottomY - EXPECTED_HEIGHT;
+                // [안전장치] 선을 아예 찾지 못한 경우 템플릿 매칭 결과(matched)를 그대로 신뢰함
+                if (topY == -1) topY = expectedTopInRoi;
+                if (bottomY == -1) bottomY = expectedBottomInRoi;
 
                 int finalTop = roiY + topY;
                 int finalH = bottomY - topY;
 
-                // 최종 높이가 너무 작아지는 것 방지
-                if (finalH < 1000) finalH = EXPECTED_HEIGHT;
+                // 최종 높이가 비정상적으로 찌그러지거나 늘어나면 매칭된 데이터의 높이 사용
+                if (finalH < matched.Height * 0.7 || finalH > matched.Height * 1.5)
+                {
+                    finalTop = matched.Y;
+                    finalH = matched.Height;
+                }
 
                 return new Rect(matched.X, finalTop, matched.Width, finalH);
             }
@@ -201,21 +243,22 @@ namespace JYVision.Inspect
             var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
 
-            SLogger.Write("==== 건반 검사 시작 ====");
+            SLogger.Write("==== 건반 볼트/각인 검사 시작 ====");
 
-            // ── Step 1. MatchAlgorithm으로 건반 위치 찾기 ────────────────
-            List<Rect> keyRects = FindKeysByMatchAlgorithm(curMode);
+            // ── Step 1. RunKeyMatch에서 저장했던 리스트 가져오기 ─────────────
+            // 새로 찾지 않고 이전에 저장된 _lastMatchedKeyRects를 그대로 사용
+            List<Rect> keyRects = _lastMatchedKeyRects;
 
             if (keyRects.Count == 0)
             {
-                SLogger.Write("[Error] 건반을 감지하지 못했습니다.");
+                SLogger.Write("[Error] 감지된 건반 데이터가 없습니다. 건반 매칭을 먼저 실행하세요.");
                 cameraForm?.ResetDisplay();
                 return;
             }
 
-            SLogger.Write($"[건반] {keyRects.Count}개 감지: {string.Join(", ", keyRects.Select(r => $"X={r.X}"))}");
+            SLogger.Write($"[건반 로드] {keyRects.Count}개의 위치 정보를 기반으로 검사를 시작합니다.");
 
-            // ── Step 2. 각 건반마다 볼트 & 각인 확인 ─────────────────────
+            // ── Step 2. 저장된 각 건반 좌표마다 볼트 & 각인 확인 ─────────────────────
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
 
             int pass = 0;
@@ -225,17 +268,18 @@ namespace JYVision.Inspect
             {
                 // 건반 ROI 표시 (파란 박스)
                 displayList.Add(new DrawInspectInfo(
-                    key, $"Key", InspectType.InspNone, DecisionType.Good));
+                    key, $"Key ROI", InspectType.InspNone, DecisionType.Good));
 
+                // 실제 검사 수행 (CheckBolt, CheckMark는 내부 정의된 함수 사용)
                 bool topBoltOk = CheckBolt(grayMat, key, BoltPosition.Top, displayList);
                 bool bottomBoltOk = CheckBolt(grayMat, key, BoltPosition.Bottom, displayList);
                 bool markOk = CheckMark(grayMat, key, displayList);
 
                 bool keyOk = topBoltOk && bottomBoltOk && markOk;
 
-                SLogger.Write($"[건반 X={key.X}] 상단볼트:{(topBoltOk ? "OK" : "FAIL")} " +
-                              $"하단볼트:{(bottomBoltOk ? "OK" : "FAIL")} " +
-                              $"각인:{(markOk ? "OK" : "FAIL")}");
+                SLogger.Write($"[검사 X={key.X}] 상단:{(topBoltOk ? "OK" : "NG")} " +
+                              $"하단:{(bottomBoltOk ? "OK" : "NG")} " +
+                              $"각인:{(markOk ? "OK" : "NG")}");
 
                 if (keyOk) pass++;
                 else fail++;
@@ -283,11 +327,11 @@ namespace JYVision.Inspect
                                 List<DrawInspectInfo> displayList)
         {
             // 볼트 ROI 비율 설정
-            float yRatioCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
-            float yRatioHalf = 0.07f;  // 위아래로 7% 범위
+            float yRatioCenter = (pos == BoltPosition.Top) ? 0.15f : 0.85f;
+            float yRatioHalf = 0.1f;  // 위아래로 7% 범위
 
-            int roiX = key.X + (int)(key.Width * 0.15f);
-            int roiW = (int)(key.Width * 0.70f);
+            int roiX = key.X + (int)(key.Width * 0.20f);
+            int roiW = (int)(key.Width * 0.60f);
             int roiY = key.Y + (int)(key.Height * (yRatioCenter - yRatioHalf));
             int roiH = (int)(key.Height * yRatioHalf * 2f);
 
@@ -332,10 +376,10 @@ namespace JYVision.Inspect
         private bool CheckMark(Mat grayMat, Rect key,
                                 List<DrawInspectInfo> displayList)
         {
-            int roiX = key.X + (int)(key.Width * 0.10f);
-            int roiW = (int)(key.Width * 0.80f);
-            int roiY = key.Y + (int)(key.Height * 0.60f);
-            int roiH = (int)(key.Height * 0.20f);
+            int roiX = key.X + (int)(key.Width * 0.20f);
+            int roiW = (int)(key.Width * 0.60f);
+            int roiY = key.Y + (int)(key.Height * 0.50f);
+            int roiH = (int)(key.Height * 0.25f);
 
             roiX = Math.Max(0, roiX);
             roiY = Math.Max(0, roiY);
