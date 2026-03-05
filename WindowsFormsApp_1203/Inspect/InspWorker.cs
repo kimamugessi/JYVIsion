@@ -171,14 +171,14 @@ namespace JYVision.Inspect
             SLogger.Write($"  [기준색] B={refColor.Item0} G={refColor.Item1} R={refColor.Item2}");
 
             // 노란색 감지 → tolerance/gap 확대
-            bool isYellow = refColor.Item2 > 150 && refColor.Item1 > 150 && refColor.Item0 < 100;
+            bool isYellow      = refColor.Item2 > 150 && refColor.Item1 > 150 && refColor.Item0 < 100;
             int colorTolerance = isYellow ? 80 : 60;
-            int gapLimit = isYellow ? 40 : 25;
+            int gapLimit       = isYellow ? 40 : 25;
 
             SLogger.Write($"  [색상판단] isYellow={isYellow} tol={colorTolerance} gap={gapLimit}");
 
-            int maxScan = (int)(matched.Height * 1.5f);
-            int scanTop = Math.Max(0, matched.Y - maxScan);
+            int maxScan    = (int)(matched.Height * 1.5f);
+            int scanTop    = Math.Max(0,        matched.Y      - maxScan);
             int scanBottom = Math.Min(imgH - 1, matched.Bottom + maxScan);
 
             // 위로 스캔
@@ -208,7 +208,7 @@ namespace JYVision.Inspect
 
             // 경계 패딩
             int padding = 15;
-            topY = Math.Max(0, topY - padding);
+            topY    = Math.Max(0,        topY    - padding);
             bottomY = Math.Min(imgH - 1, bottomY + padding);
             int finalH = bottomY - topY;
 
@@ -250,10 +250,10 @@ namespace JYVision.Inspect
                 displayList.Add(new DrawInspectInfo(
                     key, $"Key ROI", InspectType.InspNone, DecisionType.Good));
 
-                bool topBoltOk = CheckBolt(grayMat, key, BoltPosition.Top, displayList);
+                bool topBoltOk    = CheckBolt(grayMat, key, BoltPosition.Top,    displayList);
                 bool bottomBoltOk = CheckBolt(grayMat, key, BoltPosition.Bottom, displayList);
-                bool markOk = CheckMark(grayMat, key, displayList);
-                bool keyOk = topBoltOk && bottomBoltOk && markOk;
+                bool markOk       = CheckMark(grayMat, key, displayList);
+                bool keyOk        = topBoltOk && bottomBoltOk && markOk;
 
                 SLogger.Write($"[검사 X={key.X}] 상단:{(topBoltOk ? "OK" : "NG")} " +
                               $"하단:{(bottomBoltOk ? "OK" : "NG")} " +
@@ -266,29 +266,6 @@ namespace JYVision.Inspect
             SLogger.Write($"==== 결과: PASS {pass}개 / FAIL {fail}개 ====");
             cameraForm?.ResetDisplay();
             cameraForm?.AddRect(displayList);
-        }
-
-        private List<Rect> FindKeysByMatchAlgorithm(Model curMode)
-        {
-            List<Rect> keyRects = new List<Rect>();
-
-            foreach (var window in curMode.InspWindowList)
-            {
-                UpdateInspData(window);
-                var matchAlgo = window.AlgorithmList
-                    .FirstOrDefault(a => a is MatchAlgorithm) as MatchAlgorithm;
-
-                if (matchAlgo == null || !matchAlgo.IsUse) continue;
-
-                matchAlgo.DoInspect();
-                matchAlgo.GetResultRect(out List<DrawInspectInfo> results);
-                if (results == null || results.Count == 0) continue;
-
-                foreach (var r in results.OrderBy(r => r.rect.X))
-                    keyRects.Add(r.rect);
-            }
-
-            return keyRects;
         }
 
         private enum BoltPosition { Top, Bottom }
@@ -304,16 +281,16 @@ namespace JYVision.Inspect
                                 List<DrawInspectInfo> displayList)
         {
             float yRatioCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
-            float yRatioHalf = 0.12f;
+            float yRatioHalf   = 0.12f;
 
-            int roiX = key.X + (int)(key.Width * 0.20f);
-            int roiW = (int)(key.Width * 0.60f);
+            int roiX = key.X + (int)(key.Width  * 0.20f);
+            int roiW = (int)(key.Width  * 0.60f);
             int roiY = key.Y + (int)(key.Height * (yRatioCenter - yRatioHalf));
             int roiH = (int)(key.Height * yRatioHalf * 2f);
 
             roiX = Math.Max(0, roiX);
             roiY = Math.Max(0, roiY);
-            roiW = Math.Min(roiW, grayMat.Width - roiX);
+            roiW = Math.Min(roiW, grayMat.Width  - roiX);
             roiH = Math.Min(roiH, grayMat.Height - roiY);
 
             if (roiW <= 0 || roiH <= 0) return false;
@@ -324,7 +301,7 @@ namespace JYVision.Inspect
             {
                 Cv2.MeanStdDev(roiMat, out Scalar mean, out Scalar stddev);
                 double avgBrightness = mean.Val0;
-                double stdDev = stddev.Val0;
+                double stdDev        = stddev.Val0;
 
                 CircleSegment[] circles = Cv2.HoughCircles(
                     roiMat,
@@ -337,18 +314,18 @@ namespace JYVision.Inspect
                     maxRadius: roiMat.Width / 2);
 
                 bool circleFound = circles != null && circles.Length > 0;
-                bool boltFound = false;
+                bool boltFound   = false;
 
                 if (circleFound)
                 {
-                    var c = circles[0];
-                    int r = (int)(c.Radius * 0.6f);
+                    var c  = circles[0];
+                    int r  = (int)(c.Radius * 0.6f);
                     int cx = (int)c.Center.X;
                     int cy = (int)c.Center.Y;
 
                     int innerX = Math.Max(0, cx - r);
                     int innerY = Math.Max(0, cy - r);
-                    int innerW = Math.Min(r * 2, roiMat.Width - innerX);
+                    int innerW = Math.Min(r * 2, roiMat.Width  - innerX);
                     int innerH = Math.Min(r * 2, roiMat.Height - innerY);
 
                     if (innerW > 0 && innerH > 0)
@@ -358,7 +335,7 @@ namespace JYVision.Inspect
                             Cv2.MinMaxLoc(inner, out _, out double innerMax);
                             Cv2.MeanStdDev(inner, out Scalar iMean, out _);
                             double innerAvg = iMean.Val0;
-                            double ratio = (innerAvg > 1) ? innerMax / innerAvg : 1.0;
+                            double ratio    = (innerAvg > 1) ? innerMax / innerAvg : 1.0;
 
                             // 볼트: 반사점 비율 높고 절대값도 충분
                             // 구멍: 균일하게 어두워서 ratio ≈ 1.0, innerMax 낮음
@@ -369,7 +346,7 @@ namespace JYVision.Inspect
                     }
                 }
 
-                string label = pos == BoltPosition.Top ? "상단볼트" : "하단볼트";
+                string label      = pos == BoltPosition.Top ? "상단볼트" : "하단볼트";
                 string resultText = boltFound
                     ? $"{label} OK ({avgBrightness:F0}/{stdDev:F1})"
                     : $"{label} MISSING ({avgBrightness:F0}/{stdDev:F1})";
@@ -390,14 +367,14 @@ namespace JYVision.Inspect
         private bool CheckMark(Mat grayMat, Rect key,
                                 List<DrawInspectInfo> displayList)
         {
-            int roiX = key.X + (int)(key.Width * 0.30f);
-            int roiW = (int)(key.Width * 0.40f);
+            int roiX = key.X + (int)(key.Width  * 0.30f);
+            int roiW = (int)(key.Width  * 0.40f);
             int roiY = key.Y + (int)(key.Height * 0.50f);
             int roiH = (int)(key.Height * 0.25f);
 
             roiX = Math.Max(0, roiX);
             roiY = Math.Max(0, roiY);
-            roiW = Math.Min(roiW, grayMat.Width - roiX);
+            roiW = Math.Min(roiW, grayMat.Width  - roiX);
             roiH = Math.Min(roiH, grayMat.Height - roiY);
 
             if (roiW <= 0 || roiH <= 0) return false;
@@ -447,10 +424,10 @@ namespace JYVision.Inspect
 
                     foreach (var roi in pairROIs)
                     {
-                        int paddingX = (int)(roi.Width * 0.1);
-                        int innerWidth = roi.Width - (paddingX * 2);
+                        int paddingX    = (int)(roi.Width * 0.1);
+                        int innerWidth  = roi.Width - (paddingX * 2);
                         int innerHeight = roi.Height;
-                        int markHeight = (int)(innerHeight * 0.5);
+                        int markHeight  = (int)(innerHeight * 0.5);
 
                         Rect markRoi = new Rect(
                             roi.X + paddingX,
@@ -503,7 +480,7 @@ namespace JYVision.Inspect
             foreach (var inspAlgo in inspWindow.AlgorithmList)
             {
                 inspAlgo.TeachRect = windowArea;
-                inspAlgo.InspRect = windowArea;
+                inspAlgo.InspRect  = windowArea;
                 Mat srcImage = Global.Inst.InspStage.GetMat(0, inspAlgo.ImageChannel);
                 inspAlgo.SetInspData(srcImage);
             }
