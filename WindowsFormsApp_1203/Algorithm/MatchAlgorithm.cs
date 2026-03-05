@@ -20,7 +20,7 @@ namespace JYVision.Algorithm
         [XmlIgnore]
         private List<Mat> _templateImages = new List<Mat>();
 
-        public int MatchScore { get; set; } = 30; // 기본 임계값
+        public int MatchScore { get; set; } = 20; // 기본 임계값
 
         [XmlIgnore]
         public List<MatchResult> MatchResults { get; set; } = new List<MatchResult>();
