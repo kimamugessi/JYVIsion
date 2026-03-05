@@ -152,56 +152,74 @@ namespace JYVision.Inspect
         // ── 매칭된 X 범위에서 Canny 엣지로 실제 건반 상/하단 탐지 ────
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
-            int imgH = grayMat.Height;
+            int imgH = colorMat.Height;
+            int imgW = colorMat.Width;
 
-            // 1. ROI 설정: 매칭된 위치 살짝 위부터 "이미지 맨 아래까지" 충분히 잡습니다.
-            int roiY = Math.Max(0, matched.Y - 50);
-            int roiH = imgH - roiY; // 하단을 잘리지 않게 끝까지 탐색
+            // 1. 기준색 샘플링: 볼트가 없는 중앙 영역(40~60%) 여러 점 평균
+            int sampleY = matched.Y + (int)(matched.Height * 0.5f);
+            sampleY = Math.Max(0, Math.Min(sampleY, imgH - 1));
 
-            // 건반의 좌우 너비 중 중앙 60% 영역만 수직으로 탐색
-            Rect searchRect = new Rect(matched.X + (int)(matched.Width * 0.2), roiY, (int)(matched.Width * 0.6), roiH);
-
-            using (Mat roiGray = new Mat(grayMat, searchRect))
-            using (Mat edges = new Mat())
+            int[] scanCols = new int[5];
+            for (int i = 0; i < 5; i++)
             {
-                // 엣지 추출
-                Cv2.Canny(roiGray, edges, 40, 120);
-                int[] edgeCounts = new int[edges.Rows];
-                for (int y = 0; y < edges.Rows; y++)
-                {
-                    for (int x = 0; x < edges.Cols; x++)
-                        if (edges.At<byte>(y, x) > 0) edgeCounts[y]++;
-                }
-
-                int topY = -1;
-                int bottomY = -1;
-                // 노이즈 방지를 위해 엣지 픽셀 개수 임계값 설정 (너비의 15%)
-                int threshold = (int)(edges.Cols * 0.15f);
-
-                // [상단 엣지 탐색] 매칭된 위치 근처(ROI 상단부)에서 탐색
-                for (int y = 0; y < edges.Rows * 0.3; y++)
-                {
-                    if (edgeCounts[y] >= threshold) { topY = y; break; }
-                }
-
-                // [하단 엣지 탐색] ROI 맨 아래에서부터 위로 올라오며 건반의 실제 끝단 탐색
-                for (int y = edges.Rows - 1; y > edges.Rows * 0.3; y--)
-                {
-                    if (edgeCounts[y] >= threshold) { bottomY = y; break; }
-                }
-
-                // [안전장치] 엣지를 명확히 찾지 못했을 경우의 예외 처리
-                if (topY == -1) topY = matched.Y - roiY; // 상단을 못 찾으면 템플릿 매칭된 Y좌표 사용
-                if (bottomY == -1) bottomY = edges.Rows - 10; // 하단을 못 찾으면 이미지 끝부분 근처로 지정
-
-                int finalTop = roiY + topY;
-                int finalH = bottomY - topY;
-
-                // 최종 높이가 비정상적으로 작게 잡히는 것 방지 (최소 500픽셀 보장)
-                if (finalH < 500) finalH = 1500;
-
-                return new Rect(matched.X, finalTop, matched.Width, finalH);
+                float ratio = 0.2f + i * 0.15f;
+                scanCols[i] = Math.Max(0, Math.Min(
+                    matched.X + (int)(matched.Width * ratio), imgW - 1));
             }
+
+            // 5열 BGR 평균으로 기준색 산출
+            int sumB = 0, sumG = 0, sumR = 0, cnt = 0;
+            foreach (int x in scanCols)
+            {
+                // 볼트 회피: 해당 열이 너무 어두우면 샘플 제외
+                Vec3b px = colorMat.At<Vec3b>(sampleY, x);
+                int brightness = (px.Item0 + px.Item1 + px.Item2) / 3;
+                if (brightness < 40) continue; // 볼트(어두운 원) 제외
+                sumB += px.Item0; sumG += px.Item1; sumR += px.Item2;
+                cnt++;
+            }
+            if (cnt == 0) return new Rect(matched.X, matched.Y, matched.Width, matched.Height);
+
+            Vec3b refColor = new Vec3b(
+                (byte)(sumB / cnt), (byte)(sumG / cnt), (byte)(sumR / cnt));
+            SLogger.Write($"  [기준색] B={refColor.Item0} G={refColor.Item1} R={refColor.Item2}");
+
+            // 2. 위로 스캔 (볼트 크기만큼 gap 허용 = 80px)
+            int topY = sampleY;
+            int gap = 0;
+            for (int y = sampleY; y >= 0; y--)
+            {
+                int matchCount = 0;
+                foreach (int x in scanCols)
+                    if (IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, 45)) matchCount++;
+
+                if (matchCount >= 3) { topY = y; gap = 0; }
+                else if (++gap > 80) break;
+            }
+
+            // 3. 아래로 스캔 (볼트 크기만큼 gap 허용 = 80px)
+            int bottomY = sampleY;
+            gap = 0;
+            for (int y = sampleY; y < imgH; y++)
+            {
+                int matchCount = 0;
+                foreach (int x in scanCols)
+                    if (IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, 45)) matchCount++;
+
+                if (matchCount >= 3) { bottomY = y; gap = 0; }
+                else if (++gap > 80) break;
+            }
+
+            int finalH = bottomY - topY;
+            SLogger.Write($"  [결과] top={topY} bottom={bottomY} H={finalH}");
+            return new Rect(matched.X, topY, matched.Width, finalH);
+        }
+
+        private bool IsColorMatch(Vec3b px, Vec3b refColor, int tolerance)
+        {
+            return Math.Abs(px.Item0 - refColor.Item0) <= tolerance &&
+                   Math.Abs(px.Item1 - refColor.Item1) <= tolerance &&
+                   Math.Abs(px.Item2 - refColor.Item2) <= tolerance;
         }
 
         public void RunOnlyBoltMatch()
