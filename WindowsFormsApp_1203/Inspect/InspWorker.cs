@@ -152,27 +152,20 @@ namespace JYVision.Inspect
         // ── 매칭된 X 범위에서 Canny 엣지로 실제 건반 상/하단 탐지 ────
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
-            const int EXPECTED_HEIGHT = 2500;
             int imgH = grayMat.Height;
 
-            // 1. ROI 설정: 매칭된 영역을 기준으로 상하 여백 할당
-            int roiY = Math.Max(0, matched.Y - 150);
-            int roiH = Math.Min(imgH - roiY, matched.Height + 300);
+            // 1. ROI 설정: 매칭된 위치 살짝 위부터 "이미지 맨 아래까지" 충분히 잡습니다.
+            int roiY = Math.Max(0, matched.Y - 50);
+            int roiH = imgH - roiY; // 하단을 잘리지 않게 끝까지 탐색
 
-            // 가로 탐색 폭 축소: 측면 그림자/노이즈를 피하기 위해 정중앙 40% 영역만 집중 검사
-            Rect searchRect = new Rect(matched.X + (int)(matched.Width * 0.3), roiY, (int)(matched.Width * 0.4), roiH);
+            // 건반의 좌우 너비 중 중앙 60% 영역만 수직으로 탐색
+            Rect searchRect = new Rect(matched.X + (int)(matched.Width * 0.2), roiY, (int)(matched.Width * 0.6), roiH);
 
             using (Mat roiGray = new Mat(grayMat, searchRect))
-            using (Mat blurred = new Mat())
             using (Mat edges = new Mat())
             {
-                // [핵심 수정 1] 가우시안 블러 추가: 각인(글씨)이나 자잘한 표면 스크래치 무시
-                Cv2.GaussianBlur(roiGray, blurred, new OpenCvSharp.Size(5, 5), 0);
-
-                // Canny 임계값 조정 (노이즈 억제)
-                Cv2.Canny(blurred, edges, 40, 120);
-
-                // 수평 투영(Horizontal Projection) - 각 행의 엣지 픽셀 개수 계산
+                // 엣지 추출
+                Cv2.Canny(roiGray, edges, 40, 120);
                 int[] edgeCounts = new int[edges.Rows];
                 for (int y = 0; y < edges.Rows; y++)
                 {
@@ -182,56 +175,30 @@ namespace JYVision.Inspect
 
                 int topY = -1;
                 int bottomY = -1;
-
-                // 임계값 상향: 전체 너비의 15% 이상 차지하는 뚜렷한 수평선만 취급
+                // 노이즈 방지를 위해 엣지 픽셀 개수 임계값 설정 (너비의 15%)
                 int threshold = (int)(edges.Cols * 0.15f);
 
-                // [핵심 수정 2] 초기 매칭 좌표(matched) 기반의 예상 위치 산출
-                int expectedTopInRoi = matched.Y - roiY;
-                int expectedBottomInRoi = (matched.Y + matched.Height) - roiY;
-
-                // [핵심 수정 3] 상단 탐색: 예상 위치 상하 100px 내에서 '가장 강한(엣지가 많은)' 선 탐색
-                int maxTopEdge = 0;
-                int searchTopStart = Math.Max(0, expectedTopInRoi - 100);
-                int searchTopEnd = Math.Min(edges.Rows - 1, expectedTopInRoi + 100);
-
-                for (int y = searchTopStart; y <= searchTopEnd; y++)
+                // [상단 엣지 탐색] 매칭된 위치 근처(ROI 상단부)에서 탐색
+                for (int y = 0; y < edges.Rows * 0.3; y++)
                 {
-                    if (edgeCounts[y] >= threshold && edgeCounts[y] > maxTopEdge)
-                    {
-                        maxTopEdge = edgeCounts[y];
-                        topY = y;
-                    }
+                    if (edgeCounts[y] >= threshold) { topY = y; break; }
                 }
 
-                // [핵심 수정 4] 하단 탐색: 예상 위치 상하 150px 내에서 '가장 강한' 선 탐색
-                int maxBottomEdge = 0;
-                int searchBottomStart = Math.Min(edges.Rows - 1, expectedBottomInRoi + 150);
-                int searchBottomEnd = Math.Max(0, expectedBottomInRoi - 150);
-
-                // 하단은 아래에서 위로 훑어 올라감
-                for (int y = searchBottomStart; y >= searchBottomEnd; y--)
+                // [하단 엣지 탐색] ROI 맨 아래에서부터 위로 올라오며 건반의 실제 끝단 탐색
+                for (int y = edges.Rows - 1; y > edges.Rows * 0.3; y--)
                 {
-                    if (edgeCounts[y] >= threshold && edgeCounts[y] > maxBottomEdge)
-                    {
-                        maxBottomEdge = edgeCounts[y];
-                        bottomY = y;
-                    }
+                    if (edgeCounts[y] >= threshold) { bottomY = y; break; }
                 }
 
-                // [안전장치] 선을 아예 찾지 못한 경우 템플릿 매칭 결과(matched)를 그대로 신뢰함
-                if (topY == -1) topY = expectedTopInRoi;
-                if (bottomY == -1) bottomY = expectedBottomInRoi;
+                // [안전장치] 엣지를 명확히 찾지 못했을 경우의 예외 처리
+                if (topY == -1) topY = matched.Y - roiY; // 상단을 못 찾으면 템플릿 매칭된 Y좌표 사용
+                if (bottomY == -1) bottomY = edges.Rows - 10; // 하단을 못 찾으면 이미지 끝부분 근처로 지정
 
                 int finalTop = roiY + topY;
                 int finalH = bottomY - topY;
 
-                // 최종 높이가 비정상적으로 찌그러지거나 늘어나면 매칭된 데이터의 높이 사용
-                if (finalH < matched.Height * 0.7 || finalH > matched.Height * 1.5)
-                {
-                    finalTop = matched.Y;
-                    finalH = matched.Height;
-                }
+                // 최종 높이가 비정상적으로 작게 잡히는 것 방지 (최소 500픽셀 보장)
+                if (finalH < 500) finalH = 1500;
 
                 return new Rect(matched.X, finalTop, matched.Width, finalH);
             }
