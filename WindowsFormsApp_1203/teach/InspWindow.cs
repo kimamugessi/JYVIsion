@@ -134,9 +134,6 @@ namespace JYVision.Teach
 
             switch (inspType)
             {
-                case InspectType.InspBinary:
-                    inspAlgo = new BlobAlgorithm();
-                    break;
                     case InspectType.InspMatch:
                     inspAlgo = new MatchAlgorithm();
                     break;

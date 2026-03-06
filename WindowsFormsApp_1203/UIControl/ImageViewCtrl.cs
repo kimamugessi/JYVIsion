@@ -147,15 +147,6 @@ namespace JYVision.UIControl
                 case InspWindowType.Base:
                     color = Color.LightBlue;
                     break;
-                case InspWindowType.Body:
-                    color = Color.Yellow;
-                    break;
-                case InspWindowType.Sub:
-                    color = Color.Orange;
-                    break;
-                case InspWindowType.ID:
-                    color = Color.Magenta;
-                    break;
             }
 
             return color;
@@ -454,12 +445,6 @@ namespace JYVision.UIControl
                     // 스코어 문자열 그리기 (우상단)
                     string infoText = rectInfo.info;
                     PointF textPos = new PointF(screenRect.Left, screenRect.Top); // 위로 약간 띄우기
-
-                    if (rectInfo.inspectType == InspectType.InspBinary
-                        && rectInfo.decision != DecisionType.Info)
-                    {
-                        textPos.Y = screenRect.Bottom - fontSize;
-                    }
 
                     DrawText(g, infoText, textPos, fontSize, lineColor);
                 }

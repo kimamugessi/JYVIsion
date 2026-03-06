@@ -10,7 +10,6 @@ using System.Xml.Serialization;
 namespace JYVision.Algorithm
 {
     [XmlInclude(typeof(MatchAlgorithm))]
-    [XmlInclude(typeof(BlobAlgorithm))]
     public abstract class InspAlgorithm
     {
         //알고리즘 타입 정의

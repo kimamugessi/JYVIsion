@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.modelNewMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.modelOpenMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -55,82 +56,70 @@
             this.imageOpenToolStripMenuItem,
             this.imageSaveToolStripMenuItem});
             this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
-            this.fileToolStripMenuItem.Size = new System.Drawing.Size(55, 29);
-            this.fileToolStripMenuItem.Text = "File";
+            resources.ApplyResources(this.fileToolStripMenuItem, "fileToolStripMenuItem");
             // 
             // modelNewMenuItem
             // 
             this.modelNewMenuItem.Name = "modelNewMenuItem";
-            this.modelNewMenuItem.Size = new System.Drawing.Size(237, 34);
-            this.modelNewMenuItem.Text = "Model New";
+            resources.ApplyResources(this.modelNewMenuItem, "modelNewMenuItem");
             this.modelNewMenuItem.Click += new System.EventHandler(this.modelNewMenuItem_Click);
             // 
             // modelOpenMenuItem
             // 
             this.modelOpenMenuItem.Name = "modelOpenMenuItem";
-            this.modelOpenMenuItem.Size = new System.Drawing.Size(237, 34);
-            this.modelOpenMenuItem.Text = "Model Open";
+            resources.ApplyResources(this.modelOpenMenuItem, "modelOpenMenuItem");
             this.modelOpenMenuItem.Click += new System.EventHandler(this.modelOpenMenuItem_Click);
             // 
             // modelSaveMenuItem
             // 
             this.modelSaveMenuItem.Name = "modelSaveMenuItem";
-            this.modelSaveMenuItem.Size = new System.Drawing.Size(237, 34);
-            this.modelSaveMenuItem.Text = "Model Save";
+            resources.ApplyResources(this.modelSaveMenuItem, "modelSaveMenuItem");
             this.modelSaveMenuItem.Click += new System.EventHandler(this.modelSaveMenuItem_Click);
             // 
             // modelSaveAsMenuItem
             // 
             this.modelSaveAsMenuItem.Name = "modelSaveAsMenuItem";
-            this.modelSaveAsMenuItem.Size = new System.Drawing.Size(237, 34);
-            this.modelSaveAsMenuItem.Text = "Model Save As";
+            resources.ApplyResources(this.modelSaveAsMenuItem, "modelSaveAsMenuItem");
             this.modelSaveAsMenuItem.Click += new System.EventHandler(this.modelSaveAsMenuItem_Click);
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(234, 6);
+            resources.ApplyResources(this.toolStripSeparator1, "toolStripSeparator1");
             // 
             // imageOpenToolStripMenuItem
             // 
             this.imageOpenToolStripMenuItem.Name = "imageOpenToolStripMenuItem";
-            this.imageOpenToolStripMenuItem.Size = new System.Drawing.Size(237, 34);
-            this.imageOpenToolStripMenuItem.Text = "image Open";
+            resources.ApplyResources(this.imageOpenToolStripMenuItem, "imageOpenToolStripMenuItem");
             this.imageOpenToolStripMenuItem.Click += new System.EventHandler(this.imageOpenToolStripMenuItem_Click_1);
             // 
             // imageSaveToolStripMenuItem
             // 
             this.imageSaveToolStripMenuItem.Name = "imageSaveToolStripMenuItem";
-            this.imageSaveToolStripMenuItem.Size = new System.Drawing.Size(237, 34);
-            this.imageSaveToolStripMenuItem.Text = "Image Save";
+            resources.ApplyResources(this.imageSaveToolStripMenuItem, "imageSaveToolStripMenuItem");
             // 
             // MainMenu
             // 
-            this.MainMenu.GripMargin = new System.Windows.Forms.Padding(2, 2, 0, 2);
             this.MainMenu.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.MainMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileToolStripMenuItem,
             this.setupToolStripMenuItem,
             this.inspectToolStripMenuItem});
-            this.MainMenu.Location = new System.Drawing.Point(0, 0);
+            resources.ApplyResources(this.MainMenu, "MainMenu");
             this.MainMenu.Name = "MainMenu";
-            this.MainMenu.Size = new System.Drawing.Size(1978, 33);
-            this.MainMenu.TabIndex = 0;
-            this.MainMenu.Text = "menuStrip1";
+            this.MainMenu.UseWaitCursor = true;
             // 
             // setupToolStripMenuItem
             // 
             this.setupToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.setupToolStripMenuItem1});
             this.setupToolStripMenuItem.Name = "setupToolStripMenuItem";
-            this.setupToolStripMenuItem.Size = new System.Drawing.Size(75, 29);
-            this.setupToolStripMenuItem.Text = "Setup";
+            resources.ApplyResources(this.setupToolStripMenuItem, "setupToolStripMenuItem");
             // 
             // setupToolStripMenuItem1
             // 
             this.setupToolStripMenuItem1.Name = "setupToolStripMenuItem1";
-            this.setupToolStripMenuItem1.Size = new System.Drawing.Size(270, 34);
-            this.setupToolStripMenuItem1.Text = "Setup";
+            resources.ApplyResources(this.setupToolStripMenuItem1, "setupToolStripMenuItem1");
             this.setupToolStripMenuItem1.Click += new System.EventHandler(this.SetupMenuItem_Click);
             // 
             // inspectToolStripMenuItem
@@ -138,26 +127,24 @@
             this.inspectToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.cycleModeMenuItem});
             this.inspectToolStripMenuItem.Name = "inspectToolStripMenuItem";
-            this.inspectToolStripMenuItem.Size = new System.Drawing.Size(87, 29);
-            this.inspectToolStripMenuItem.Text = "Inspect";
+            resources.ApplyResources(this.inspectToolStripMenuItem, "inspectToolStripMenuItem");
             // 
             // cycleModeMenuItem
             // 
             this.cycleModeMenuItem.CheckOnClick = true;
             this.cycleModeMenuItem.Name = "cycleModeMenuItem";
-            this.cycleModeMenuItem.Size = new System.Drawing.Size(212, 34);
-            this.cycleModeMenuItem.Text = "Cycle Mode";
+            resources.ApplyResources(this.cycleModeMenuItem, "cycleModeMenuItem");
             this.cycleModeMenuItem.Click += new System.EventHandler(this.cycleModeMenuItem_Click);
             // 
             // MainForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 18F);
+            resources.ApplyResources(this, "$this");
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1978, 1444);
             this.Controls.Add(this.MainMenu);
             this.MainMenuStrip = this.MainMenu;
             this.Name = "MainForm";
-            this.Text = "MainForm";
+            this.UseWaitCursor = true;
+            this.Load += new System.EventHandler(this.MainForm_Load);
             this.MainMenu.ResumeLayout(false);
             this.MainMenu.PerformLayout();
             this.ResumeLayout(false);

@@ -231,7 +231,8 @@ namespace JYVision.SaigeSDK
             foreach (var prediction in segmentedObjects)
             {
                 SolidBrush brush = new SolidBrush(Color.FromArgb(127, prediction.ClassInfo.Color));
-                //g.DrawString(prediction.ClassInfo.Name + " : " + prediction.Area, new Font(FontFamily.GenericSansSerif, 50), brush, 10, step);
+                //g.DrawString(prediction.ClassInfo.Name + " : " + prediction.Area, new
+                //(FontFamily.GenericSansSerif, 50), brush, 10, step);
                 using (GraphicsPath gp = new GraphicsPath())
                 {
                     if (prediction.Contour.Value.Count < 3) continue;

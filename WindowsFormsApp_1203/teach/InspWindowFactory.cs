@@ -58,20 +58,7 @@ namespace JYVision.Teach
             {
                 case InspWindowType.Base:
                     inspWindow.AddInspAlgorithm(InspectType.InspMatch);
-                    inspWindow.AddInspAlgorithm(InspectType.InspBinary);
                     break;
-                case InspWindowType.Body:
-                    inspWindow.AddInspAlgorithm(InspectType.InspMatch);
-                    inspWindow.AddInspAlgorithm(InspectType.InspBinary);
-                    break;
-                case InspWindowType.Sub:
-                    inspWindow.AddInspAlgorithm(InspectType.InspMatch);
-                    inspWindow.AddInspAlgorithm(InspectType.InspBinary);
-                    break;
-                case InspWindowType.ID:
-                    inspWindow.AddInspAlgorithm(InspectType.InspMatch);
-                    break;
-
             }
 
             return true;
@@ -87,18 +74,7 @@ namespace JYVision.Teach
                     name = "Base";
                     prefix = "BAS";
                     break;
-                case InspWindowType.Body:
-                    name = "Body";
-                    prefix = "BDY";
-                    break;
-                case InspWindowType.Sub:
-                    name = "Sub";
-                    prefix = "SUB";
-                    break;
-                case InspWindowType.ID:
-                    name = "ID";
-                    prefix = "ID";
-                    break;
+               
                 default:
                     return false;
             }

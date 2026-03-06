@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SetupForm));
             this.tabSetting = new System.Windows.Forms.TabControl();
             this.SuspendLayout();
             // 
@@ -35,19 +36,22 @@
             // 
             this.tabSetting.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabSetting.Location = new System.Drawing.Point(0, 0);
+            this.tabSetting.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.tabSetting.Name = "tabSetting";
             this.tabSetting.SelectedIndex = 0;
-            this.tabSetting.Size = new System.Drawing.Size(466, 237);
+            this.tabSetting.Size = new System.Drawing.Size(533, 276);
             this.tabSetting.TabIndex = 1;
             // 
             // SetupForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(466, 237);
+            this.ClientSize = new System.Drawing.Size(533, 276);
             this.Controls.Add(this.tabSetting);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "SetupForm";
-            this.Text = "SetupForm";
+            this.Text = "Setup";
             this.ResumeLayout(false);
 
         }

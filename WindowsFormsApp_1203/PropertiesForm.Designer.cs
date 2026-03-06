@@ -21,6 +21,7 @@
         }
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PropertiesForm));
             this.tabPropControl = new System.Windows.Forms.TabControl();
             this.SuspendLayout();
             // 
@@ -37,9 +38,10 @@
             // 
             this.ClientSize = new System.Drawing.Size(789, 482);
             this.Controls.Add(this.tabPropControl);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "PropertiesForm";
-            this.Text = "PropertiesForm";
-           this.ResumeLayout(false);
+            this.Text = "Properties";
+            this.ResumeLayout(false);
 
         }
 

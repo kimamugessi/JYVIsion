@@ -59,14 +59,6 @@ namespace JYVision
             UserControl curProp = null;
             switch (inspPropType)
             {
-                case InspectType.InspBinary:
-                    BinaryProp blobProp = new BinaryProp();
-
-                    blobProp.RangeChanged += RangeSlider_RangeChaged;
-                    //blobProp.PropertyChanged += PropertyChanged;
-                    blobProp.ImageChannelChanged += ImageChannelchaged;
-                    curProp = blobProp;
-                    break;
                 case InspectType.InspMatch:
                     MatchInspProp matchProp = new MatchInspProp();
                     //matchProp.PropertyChanged += PropertyChanged;
@@ -118,16 +110,8 @@ namespace JYVision
                 {
                     UserControl uc = tabPage.Controls[0] as UserControl;
 
-                    // 1. 이진화(Binary) 속성창 업데이트
-                    if (uc is BinaryProp binaryProp)
-                    {
-                        BlobAlgorithm blobAlgo = (BlobAlgorithm)window.FindInspAlgorithm(InspectType.InspBinary);
-                        if (blobAlgo == null) continue;
-
-                        binaryProp.SetAlgorithm(blobAlgo);
-                    }
                     // 2. 매칭(Match/Bolt) 속성창 업데이트
-                    else if (uc is MatchInspProp matchProp)
+                    if (uc is MatchInspProp matchProp)
                     {
                         MatchAlgorithm matchAlgo = (MatchAlgorithm)window.FindInspAlgorithm(InspectType.InspMatch);
                         if (matchAlgo == null) continue;
@@ -159,22 +143,11 @@ namespace JYVision
                 }
             }
         }
-        private void RangeSlider_RangeChaged(object sender, RangeChangedEventArgs e)
-        {
-            int lowerValue = e.LowerValue;
-            int upperValue = e.UpperValue;
-            bool invert = e.Invert;
-            ShowBinaryMode showBinMode = e.ShowBinMode;
-            Global.Inst.InspStage.PreView?.SetBinary(lowerValue, upperValue, invert, showBinMode);
-        }
+        
 
         //private void PropertyChanged(object sender, EventArgs e)
         //{
         //    Global.Inst.InspStage.RedrawMainView();
         //}
-        private void ImageChannelchaged(object sender, ImageChannelEventArgs e)
-        {
-            Global.Inst.InspStage.SetPreviewImage(e.Channel);
-        }
     }
 }

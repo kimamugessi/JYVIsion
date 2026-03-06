@@ -10,7 +10,6 @@ namespace JYVision.Core
     public enum InspectType
     {
         InspNone = -1,
-        InspBinary,
         InspMatch,
         InspBoltROI,
         InspFilter,
@@ -23,9 +22,6 @@ namespace JYVision.Core
     {
         None = 0,
         Base,
-        Body,
-        Sub,
-        ID
     }
 
     public enum DecisionType

@@ -14,10 +14,12 @@ using JYVision.Util;
 using JYVision4.Setting;
 using WeifenLuo.WinFormsUI.Docking;
 //using WeifenLuo.WinFormsUI.ThemeVS2015;
+using MaterialSkin;
+using MaterialSkin.Controls;
 
 namespace JYVision
 {
-    public partial class MainForm : Form
+    public partial class MainForm : MaterialForm
     {
         private static DockPanel _dockPanel;
 
@@ -25,6 +27,27 @@ namespace JYVision
         {
             InitializeComponent();
 
+            foreach (Control c in this.Controls)
+            {
+                c.Font = new Font("Segoe UI", 9, FontStyle.Regular);
+            }
+            // 1. MaterialSkinManager 인스턴스 가져오기
+            var materialSkinManager = MaterialSkinManager.Instance;
+
+            // 2. 관리할 Form 추가 (this는 현재 MainForm)
+            materialSkinManager.AddFormToManage(this);
+
+            // 3. 테마 설정 (DARK 또는 LIGHT)
+            materialSkinManager.Theme = MaterialSkinManager.Themes.LIGHT;
+
+            // 4. 컬러 스킴 설정 (Primary 색상, 다크 Primary, 액센트 색상 등)
+            materialSkinManager.ColorScheme = new ColorScheme(
+        Color.FromArgb(0, 38, 76),    // Royal Blue (메인)
+        Color.FromArgb(241, 90, 40), // Royal Blue 보다 조금 더 어두운 색 (상태바)
+        Color.FromArgb(130, 145, 162), // Blue Grey (보조)
+        Color.FromArgb(241, 90, 40),   // Sunrise Orange (포인트/액센트)
+        TextShade.BLACK               // 텍스트 색상
+    );
             _dockPanel = new DockPanel
             {
                 Dock = DockStyle.Fill
@@ -184,6 +207,11 @@ namespace JYVision
         {
             bool isChecked = cycleModeMenuItem.Checked;
             SettingXml.Inst.CycleMode = isChecked;
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

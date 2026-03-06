@@ -59,6 +59,9 @@
     <Reference Include="log4net">
       <HintPath>C:\Users\user\source\repos\JidamVision4\ExternalLib\Dll\Log4Net\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="MaterialSkin, Version=2.3.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MaterialSkin.2.2.3.1\lib\net48\MaterialSkin.dll</HintPath>
+    </Reference>
     <Reference Include="MessagingLibrary">
       <HintPath>..\..\JidamVision4\ExternalLib\Dll\MessagingLibrary\MessagingLibrary.dll</HintPath>
     </Reference>
@@ -86,6 +89,7 @@
     </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
     <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
     </Reference>
@@ -116,7 +120,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Algorithm\BlobAlgorithm.cs" />
     <Compile Include="Algorithm\DrawInspectInfo.cs" />
     <Compile Include="Algorithm\InspAlgorithm.cs" />
     <Compile Include="Algorithm\MatchAlgorithm.cs" />
@@ -153,12 +156,6 @@
     </Compile>
     <Compile Include="Property\AIModuleProp.Designer.cs">
       <DependentUpon>AIModuleProp.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Property\BinaryProp.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Property\BinaryProp.Designer.cs">
-      <DependentUpon>BinaryProp.cs</DependentUpon>
     </Compile>
     <Compile Include="Property\ImageFilterProp.cs">
       <SubType>UserControl</SubType>
@@ -284,6 +281,9 @@
     <EmbeddedResource Include="LogForm.resx">
       <DependentUpon>LogForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="MainForm.bho-Deva.resx">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -308,9 +308,6 @@
     </Compile>
     <EmbeddedResource Include="Property\AIModuleProp.resx">
       <DependentUpon>AIModuleProp.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Property\BinaryProp.resx">
-      <DependentUpon>BinaryProp.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Property\ImageFilterProp.resx">
       <DependentUpon>ImageFilterProp.cs</DependentUpon>

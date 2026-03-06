@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(NewModel));
             this.btnCreate = new System.Windows.Forms.Button();
             this.txtModelInfo = new System.Windows.Forms.RichTextBox();
             this.txtModelName = new System.Windows.Forms.TextBox();
@@ -37,9 +38,10 @@
             // 
             // btnCreate
             // 
-            this.btnCreate.Location = new System.Drawing.Point(187, 143);
+            this.btnCreate.Location = new System.Drawing.Point(214, 167);
+            this.btnCreate.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnCreate.Name = "btnCreate";
-            this.btnCreate.Size = new System.Drawing.Size(79, 30);
+            this.btnCreate.Size = new System.Drawing.Size(90, 35);
             this.btnCreate.TabIndex = 9;
             this.btnCreate.Text = "만들기";
             this.btnCreate.UseVisualStyleBackColor = true;
@@ -47,47 +49,51 @@
             // 
             // txtModelInfo
             // 
-            this.txtModelInfo.Location = new System.Drawing.Point(77, 33);
+            this.txtModelInfo.Location = new System.Drawing.Point(88, 38);
+            this.txtModelInfo.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtModelInfo.Name = "txtModelInfo";
-            this.txtModelInfo.Size = new System.Drawing.Size(190, 104);
+            this.txtModelInfo.Size = new System.Drawing.Size(217, 121);
             this.txtModelInfo.TabIndex = 8;
             this.txtModelInfo.Text = "";
             // 
             // txtModelName
             // 
-            this.txtModelName.Location = new System.Drawing.Point(77, 6);
+            this.txtModelName.Location = new System.Drawing.Point(88, 7);
+            this.txtModelName.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtModelName.Name = "txtModelName";
-            this.txtModelName.Size = new System.Drawing.Size(190, 21);
+            this.txtModelName.Size = new System.Drawing.Size(217, 24);
             this.txtModelName.TabIndex = 7;
             // 
             // lbModelInfo
             // 
             this.lbModelInfo.AutoSize = true;
-            this.lbModelInfo.Location = new System.Drawing.Point(12, 36);
+            this.lbModelInfo.Location = new System.Drawing.Point(14, 42);
             this.lbModelInfo.Name = "lbModelInfo";
-            this.lbModelInfo.Size = new System.Drawing.Size(57, 12);
+            this.lbModelInfo.Size = new System.Drawing.Size(68, 14);
             this.lbModelInfo.TabIndex = 6;
             this.lbModelInfo.Text = "모델 정보";
             // 
             // lbModelName
             // 
             this.lbModelName.AutoSize = true;
-            this.lbModelName.Location = new System.Drawing.Point(12, 9);
+            this.lbModelName.Location = new System.Drawing.Point(14, 10);
             this.lbModelName.Name = "lbModelName";
-            this.lbModelName.Size = new System.Drawing.Size(41, 12);
+            this.lbModelName.Size = new System.Drawing.Size(49, 14);
             this.lbModelName.TabIndex = 5;
             this.lbModelName.Text = "모델명";
             // 
             // NewModel
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(273, 179);
+            this.ClientSize = new System.Drawing.Size(312, 209);
             this.Controls.Add(this.btnCreate);
             this.Controls.Add(this.txtModelInfo);
             this.Controls.Add(this.txtModelName);
             this.Controls.Add(this.lbModelInfo);
             this.Controls.Add(this.lbModelName);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "NewModel";
             this.Text = "NewModel";
             this.ResumeLayout(false);
