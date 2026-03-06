@@ -73,9 +73,9 @@ namespace JYVision
                     curProp = matchProp;
                     break;
                 case InspectType.InspBoltROI:
-                    BoltROIProp boltRoiProp = new BoltROIProp();
-                    // 필요한 이벤트 연결이 있다면 여기에 작성 (예: boltRoiProp.PropertyChanged += ...)
-                    curProp = boltRoiProp;
+                    xylophone xylophone = new xylophone();
+                    // 필요한 이벤트 연결이 있다면 여기에 작성 (예: xylophone.PropertyChanged += ...)
+                    curProp = xylophone;
                     break;
                 case InspectType.InspFilter:
                     ImageFilterProp filterProp = new ImageFilterProp();
@@ -99,7 +99,7 @@ namespace JYVision
                 // 기본 알고리즘 탭 생성
                 LoadOptionControl(algo.InspectType);
 
-                // 💡 만약 Match(볼트) 알고리즘이 있다면 BoltROIProp 탭도 추가로 생성
+                // 💡 만약 Match(볼트) 알고리즘이 있다면 xylophone 탭도 추가로 생성
                 if (algo.InspectType == InspectType.InspMatch)
                 {
                     LoadOptionControl(InspectType.InspBoltROI);
@@ -137,13 +137,13 @@ namespace JYVision
                         matchProp.SetAlgorithm(matchAlgo);
                     }
                     // 3. ✨ 볼트 ROI 테스트 속성창 업데이트 (추가된 부분)
-                    else if (uc is BoltROIProp boltProp)
+                    else if (uc is xylophone boltProp)
                     {
-                        // BoltROIProp은 버튼 동작을 위해 MatchAlgorithm 정보가 필요할 수 있습니다.
+                        // xylophone은 버튼 동작을 위해 MatchAlgorithm 정보가 필요할 수 있습니다.
                         MatchAlgorithm matchAlgo = (MatchAlgorithm)window.FindInspAlgorithm(InspectType.InspMatch);
                         if (matchAlgo == null) continue;
 
-                        // 만약 BoltROIProp 내부에 SetAlgorithm(matchAlgo) 메서드를 만드셨다면 호출하세요.
+                        // 만약 xylophone 내부에 SetAlgorithm(matchAlgo) 메서드를 만드셨다면 호출하세요.
                         // boltProp.SetAlgorithm(matchAlgo); 
                     }
                     // 4. 이미지 필터 속성창 업데이트

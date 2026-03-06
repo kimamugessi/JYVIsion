@@ -78,18 +78,16 @@ namespace JYVision.Core
             _inspWorker.RunKeyMatch();
         }
 
-        /// <summary>건반 기준 볼트 + 각인 검사 실행</summary>
+        /// <summary>건반 기준 볼트 검사 실행</summary>
         public void RunOnlyBoltMatch()
         {
             _inspWorker.RunOnlyBoltMatch();
         }
-
-        /// <summary>각인 대조 검사</summary>
-        public void RunCheckMarkContrast()
+        /// <summary>건반 기준 각인 검사 실행</summary>
+        public void RunOnlyCheckMark()
         {
-            _inspWorker.RunCheckMarkContrast();
+            _inspWorker.RunOnlyCheckMark();
         }
-
         // ── 초기화 ───────────────────────────────────────────────────────
         public bool Initialize()
         {
@@ -544,6 +542,10 @@ namespace JYVision.Core
             ResetDisplay();
             bool isDefect = false;
             _inspWorker.RunInspect(out isDefect);
+            var stage = Global.Inst.InspStage;
+            stage.RunKeyMatch();
+            stage.RunOnlyBoltMatch();
+            //stage.();
         }
 
         public void StopCycle()
@@ -661,8 +663,12 @@ namespace JYVision.Core
                 disposed = true;
             }
         }
-
+        public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
+        {
+            _inspWorker.RunDisplayWithOptions(showKeyboard, showBolt, showMark);
+        }
         public void Dispose() { Dispose(true); }
         #endregion
     }
+
 }

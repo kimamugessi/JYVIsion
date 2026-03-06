@@ -172,11 +172,11 @@
     <Compile Include="Property\MatchInspProp.Designer.cs">
       <DependentUpon>MatchInspProp.cs</DependentUpon>
     </Compile>
-    <Compile Include="Property\BoltROIProp.cs">
+    <Compile Include="Property\xylophoneProp.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Property\BoltROIProp.Designer.cs">
-      <DependentUpon>BoltROIProp.cs</DependentUpon>
+    <Compile Include="Property\xylophoneProp.Designer.cs">
+      <DependentUpon>xylophoneProp.cs</DependentUpon>
     </Compile>
     <Compile Include="RunForm.cs">
       <SubType>Form</SubType>
@@ -318,8 +318,8 @@
     <EmbeddedResource Include="Property\MatchInspProp.resx">
       <DependentUpon>MatchInspProp.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Property\BoltROIProp.resx">
-      <DependentUpon>BoltROIProp.cs</DependentUpon>
+    <EmbeddedResource Include="Property\xylophoneProp.resx">
+      <DependentUpon>xylophoneProp.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ResultForm.resx">
       <DependentUpon>ResultForm.cs</DependentUpon>
