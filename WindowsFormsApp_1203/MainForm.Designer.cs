@@ -107,7 +107,6 @@
             this.inspectToolStripMenuItem});
             resources.ApplyResources(this.MainMenu, "MainMenu");
             this.MainMenu.Name = "MainMenu";
-            this.MainMenu.UseWaitCursor = true;
             // 
             // setupToolStripMenuItem
             // 
@@ -143,8 +142,6 @@
             this.Controls.Add(this.MainMenu);
             this.MainMenuStrip = this.MainMenu;
             this.Name = "MainForm";
-            this.UseWaitCursor = true;
-            this.Load += new System.EventHandler(this.MainForm_Load);
             this.MainMenu.ResumeLayout(false);
             this.MainMenu.PerformLayout();
             this.ResumeLayout(false);
