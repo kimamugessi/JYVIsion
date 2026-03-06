@@ -17,7 +17,6 @@ namespace JYVision.Core
         private Mat _previewImage = null;
 
         private InspWindow _inspWindow = null;
-        private bool _usePreview = true;
 
         public void SetImage(Mat image)
         {

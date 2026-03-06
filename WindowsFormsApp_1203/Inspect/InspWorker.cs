@@ -11,38 +11,47 @@ using System.Threading.Tasks;
 
 namespace JYVision.Inspect
 {
-    /// <summary>
-    /// 시각 검사 실행 및 결과 처리를 담당하는 워커 클래스
-    /// </summary>
+    //===== 시각 검사 실행 및 결과 처리 워커 클래스 =====
     public class InspWorker
     {
         private CancellationTokenSource _cts = new CancellationTokenSource();
-        private InspectBoard _inspectBoard = new InspectBoard();
-        private List<Rect> _lastMatchedKeyRects = new List<Rect>(); // 마지막 매칭된 건반 영역 저장
+        private readonly InspectBoard _inspectBoard = new InspectBoard();
+        private readonly List<Rect> _lastMatchedKeyRects = new List<Rect>();
 
         public bool IsRunning { get; set; } = false;
 
         public InspWorker() { }
 
-        // --- 루프 제어 ---
+        //===== [그룹 1] 엔진 및 루프 제어 =====
+
+        //------- 검사 루프 시작 -------
         public void StartCycleInspectImage()
         {
+            _cts?.Cancel(); // 기존 작업이 돌고 있으면 일단 캔슬
             _cts = new CancellationTokenSource();
-            Task.Run(() => InspectionLoop(this, _cts.Token));
+            Task.Run(() => InspectionLoop(this, _cts.Token)); // 새 토큰으로 검사 스레드 가동
         }
 
+        //------- 루프 중지 -------
         public void Stop() => _cts.Cancel();
 
+        //------- 내부 검사 스레드 루프 -------
         private void InspectionLoop(InspWorker inspWorker, CancellationToken token)
         {
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
             IsRunning = true;
+
             while (!token.IsCancellationRequested)
-                Global.Inst.InspStage.OneCycle();
+            {
+                Global.Inst.InspStage.OneCycle(); // 정지 요청 전까지 무한 반복
+            }
+
             IsRunning = false;
         }
 
-        // --- 양산 검사 (Main) ---
+        //===== [그룹 2] 검사 실행 메인 흐름 =====
+
+        //------- 전체 양산 검사 실행 -------
         public bool RunInspect(out bool isDefect)
         {
             isDefect = false;
@@ -50,19 +59,21 @@ namespace JYVision.Inspect
             var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> finalDisplayList = new List<DrawInspectInfo>();
 
-            // 모든 검사 윈도우 및 알고리즘 실행
+            // 현재 모델에 설정된 모든 윈도우와 알고리즘 순회 실행
             foreach (var window in curMode.InspWindowList)
             {
-                UpdateInspData(window);
+                UpdateInspData(window); // 최신 이미지/위치 데이터 동기화
                 foreach (var algo in window.AlgorithmList)
                 {
                     algo.DoInspect();
-                    algo.GetResultRect(out List<DrawInspectInfo> results);
-                    finalDisplayList.AddRange(results);
+                    if (algo.GetResultRect(out List<DrawInspectInfo> results) > 0)
+                    {
+                        finalDisplayList.AddRange(results);
+                    }
                 }
             }
 
-            // 결과 화면 갱신
+            // UI 화면 리셋 후 결과 박스 다시 그리기
             if (cameraForm != null)
             {
                 cameraForm.ResetDisplay();
@@ -71,7 +82,19 @@ namespace JYVision.Inspect
             return true;
         }
 
-        // --- 건반 매칭 및 영역 최적화 ---
+        //------- 개별 윈도우/알고리즘 검사 시도 -------
+        public bool TryInspect(InspWindow inspObj, InspectType inspType)
+        {
+            if (inspObj == null) return RunInspect(out _);
+            if (!UpdateInspData(inspObj)) return false;
+
+            _inspectBoard.Inspect(inspObj); // 전용 보드 클래스에서 검사 수행
+            return DisplayResult(inspObj, inspType);
+        }
+
+        //===== [그룹 3] 건반 위치 탐색 및 보정 =====
+
+        //------- 건반 템플릿 매칭 실행 -------
         public void RunKeyMatch()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
@@ -82,7 +105,7 @@ namespace JYVision.Inspect
             Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
             if (colorMat == null || colorMat.Empty()) return;
 
-            // 1. 템플릿 매칭으로 기초 위치 탐색
+            // 1. 설정된 윈도우들에서 매칭 알고리즘만 골라 실행
             var matchedRects = new List<Rect>();
             foreach (var window in curMode.InspWindowList)
             {
@@ -91,11 +114,14 @@ namespace JYVision.Inspect
                 if (matchAlgo == null) continue;
 
                 matchAlgo.DoInspect();
-                matchAlgo.GetResultRect(out List<DrawInspectInfo> results);
-                if (results != null) matchedRects.AddRange(results.OrderBy(r => r.rect.X).Select(r => r.rect));
+                if (matchAlgo.GetResultRect(out List<DrawInspectInfo> results) > 0)
+                {
+                    // 왼쪽 건반부터 순서대로 정렬해서 리스트에 담음
+                    matchedRects.AddRange(results.OrderBy(r => r.rect.X).Select(r => r.rect));
+                }
             }
 
-            // 2. 색상 기반으로 실제 건반 영역(Height) 정밀 추출
+            // 2. 찾아낸 대략적인 위치를 바탕으로 실제 색상 영역 정밀 보정
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
             foreach (var matched in matchedRects)
             {
@@ -105,78 +131,104 @@ namespace JYVision.Inspect
             }
 
             cameraForm?.ResetDisplay();
-            cameraForm?.AddRect(displayList);
+            if (displayList.Count > 0) cameraForm?.AddRect(displayList);
         }
 
-        // --- 건반 높이 정밀 탐색 로직 ---
+        //------- 색상 기반 건반 영역 정밀 추출 -------
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
             int imgH = colorMat.Height;
             int imgW = colorMat.Width;
-            int sampleY = Math.Max(0, Math.Min(matched.Y + (int)(matched.Height * 0.5f), imgH - 1));
 
-            // 가로 5점 샘플링으로 기준 색상 추출
-            int[] scanCols = Enumerable.Range(0, 5).Select(i => (int)(matched.X + matched.Width * (0.2f + i * 0.15f))).ToArray();
-            int sumB = 0, sumG = 0, sumR = 0, cnt = 0;
+            // 중앙 부근 3개 높이(35, 50, 65%)에서 샘플링하여 빗나감 방지
+            int[] sampleYs = new[] { 0.35f, 0.50f, 0.65f }
+                .Select(r => Math.Max(0, Math.Min(matched.Y + (int)(matched.Height * r), imgH - 1)))
+                .ToArray();
 
-            foreach (int x in scanCols)
+            // 가로 방향 5개 컬럼 샘플링
+            int[] scanCols = Enumerable.Range(0, 5)
+                .Select(i => Math.Max(0, Math.Min((int)(matched.X + matched.Width * (0.2f + i * 0.15f)), imgW - 1)))
+                .ToArray();
+
+            long sumB = 0, sumG = 0, sumR = 0;
+            int cnt = 0;
+            foreach (int sy in sampleYs)
             {
-                Vec3b px = colorMat.At<Vec3b>(sampleY, x);
-                if ((px.Item0 + px.Item1 + px.Item2) / 3 < 40) continue;
-                sumB += px.Item0; sumG += px.Item1; sumR += px.Item2; cnt++;
+                foreach (int x in scanCols)
+                {
+                    Vec3b px = colorMat.At<Vec3b>(sy, x);
+                    if ((px.Item0 + px.Item1 + px.Item2) / 3 < 40) continue; // 어두운 픽셀은 건너뜀
+                    sumB += px.Item0; sumG += px.Item1; sumR += px.Item2; cnt++;
+                }
             }
 
-            if (cnt == 0) return matched;
+            if (cnt == 0) return matched; // 샘플링 안되면 원본 반환
             Vec3b refColor = new Vec3b((byte)(sumB / cnt), (byte)(sumG / cnt), (byte)(sumR / cnt));
 
-            // 노란색 여부에 따른 허용치 설정
+            // 현재 건반의 주력 색상 판별
             bool isYellow = refColor.Item2 > 150 && refColor.Item1 > 150 && refColor.Item0 < 100;
-            int colorTolerance = isYellow ? 80 : 60;
-            int gapLimit = isYellow ? 40 : 25;
+            bool isRed = refColor.Item2 > 150 && refColor.Item1 < 100 && refColor.Item0 < 100;
+            bool isBlue = refColor.Item0 > 100 && refColor.Item2 < 100;
 
-            // 상하 스캔을 통한 경계 결정
-            int maxScan = (int)(matched.Height * 1.5f);
-            int topY = sampleY, bottomY = sampleY, gap = 0;
+            // 색상별 알고리즘 감도 조절
+            int colorTolerance = isYellow ? 80 : isRed ? 70 : isBlue ? 65 : 60;
+            int gapLimit = isYellow ? 40 : isRed ? 35 : 30;
 
-            // 위쪽 스캔
-            for (int y = sampleY; y >= Math.Max(0, matched.Y - maxScan); y--)
+            int maxScan = (int)(matched.Height * 2.0f);
+            int topY = matched.Y + (int)(matched.Height * 0.5f);
+            int bottomY = topY;
+            int gap = 0;
+
+            // 위로 훑으면서 색상이 변하는 지점 찾기
+            for (int y = topY; y >= Math.Max(0, matched.Y - maxScan); y--)
             {
-                if (scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3) { topY = y; gap = 0; }
+                bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3;
+                if (match) { topY = y; gap = 0; }
                 else if (++gap > gapLimit) break;
             }
-            // 아래쪽 스캔
+
+            // 아래로 훑으면서 영역 끝 지점 찾기
             gap = 0;
-            for (int y = sampleY; y <= Math.Min(imgH - 1, matched.Bottom + maxScan); y++)
+            for (int y = topY; y <= Math.Min(imgH - 1, matched.Bottom + maxScan); y++)
             {
-                if (scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3) { bottomY = y; gap = 0; }
+                bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3;
+                if (match) { bottomY = y; gap = 0; }
                 else if (++gap > gapLimit) break;
             }
 
-            return new Rect(matched.X, Math.Max(0, topY - 15), matched.Width, Math.Min(imgH - 1, bottomY + 15) - Math.Max(0, topY - 15));
+            // 상하 5% 정도 혹은 최소 15px의 여유 공간을 더해줌
+            int margin = Math.Max(15, (int)((bottomY - topY) * 0.05f));
+            int finalTop = Math.Max(0, topY - margin);
+            int finalBottom = Math.Min(imgH - 1, bottomY + margin);
+
+            return new Rect(matched.X, finalTop, matched.Width, finalBottom - finalTop);
         }
 
+        //------- 픽셀 색상 일치 여부 확인 -------
         private bool IsColorMatch(Vec3b px, Vec3b refColor, int tolerance) =>
             Math.Abs(px.Item0 - refColor.Item0) <= tolerance &&
             Math.Abs(px.Item1 - refColor.Item1) <= tolerance &&
             Math.Abs(px.Item2 - refColor.Item2) <= tolerance;
 
-        // --- 볼트 및 각인 유무 검사 ---
-        public void RunOnlyBoltMatch()
+        //===== [그룹 4] 세부 부품(볼트/각인) 검사 =====
+
+        //------- 볼트 및 각인 전체 검사 수행 -------
+        public void RunBoltMark()
         {
             if (_lastMatchedKeyRects.Count == 0) return;
 
             var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
+            if (grayMat == null || grayMat.Empty()) return;
 
             foreach (Rect key in _lastMatchedKeyRects)
             {
                 displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
-
-                // 각 건반별 상/하 볼트 및 각인 상태 검사
-                bool topOk = CheckBolt(grayMat, key, BoltPosition.Top, displayList);
-                bool botOk = CheckBolt(grayMat, key, BoltPosition.Bottom, displayList);
-                bool markOk = CheckMark(grayMat, key, displayList);
+                // 보정된 건반 영역 안에서 볼트와 각인 알고리즘을 태움
+                CheckBolt(grayMat, key, BoltPosition.Top, displayList);
+                CheckBolt(grayMat, key, BoltPosition.Bottom, displayList);
+                CheckMark(grayMat, key, displayList);
             }
 
             cameraForm?.ResetDisplay();
@@ -185,18 +237,19 @@ namespace JYVision.Inspect
 
         private enum BoltPosition { Top, Bottom }
 
-        // 볼트 검사: 원형 검출 후 내부 명암비(Ratio) 및 밝기(Max) 분석
+        //------- 단일 볼트 존재 검사 -------
         private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos, List<DrawInspectInfo> displayList)
         {
+            // 상/하 위치에 따른 세부 ROI 영역 계산
             float yCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
             Rect boltRoi = new Rect(key.X + (int)(key.Width * 0.2f), key.Y + (int)(key.Height * (yCenter - 0.12f)), (int)(key.Width * 0.6f), (int)(key.Height * 0.24f));
 
-            // 이미지 경계 예외 처리
             boltRoi = boltRoi.Intersect(new Rect(0, 0, grayMat.Width, grayMat.Height));
             if (boltRoi.Width <= 0 || boltRoi.Height <= 0) return false;
 
             using (Mat roiMat = new Mat(grayMat, boltRoi))
             {
+                // 원형 피처 검출
                 CircleSegment[] circles = Cv2.HoughCircles(roiMat, HoughModes.Gradient, 1.0, roiMat.Width, 50, 18, roiMat.Width / 6, roiMat.Width / 2);
                 bool boltFound = false;
 
@@ -206,12 +259,15 @@ namespace JYVision.Inspect
                     Rect innerRect = new Rect((int)c.Center.X - (int)(c.Radius * 0.6f), (int)c.Center.Y - (int)(c.Radius * 0.6f), (int)(c.Radius * 1.2f), (int)(c.Radius * 1.2f));
                     innerRect = innerRect.Intersect(new Rect(0, 0, roiMat.Width, roiMat.Height));
 
-                    using (Mat inner = new Mat(roiMat, innerRect))
+                    if (innerRect.Width > 0 && innerRect.Height > 0)
                     {
-                        Cv2.MinMaxLoc(inner, out _, out double innerMax);
-                        Cv2.MeanStdDev(inner, out Scalar iMean, out _);
-                        // 볼트 특성: 반사광으로 인해 평균 대비 최대 밝기 비율이 높음
-                        boltFound = (innerMax / iMean.Val0) > 1.6 && innerMax > 80.0;
+                        using (Mat inner = new Mat(roiMat, innerRect))
+                        {
+                            Cv2.MinMaxLoc(inner, out _, out double innerMax);
+                            Cv2.MeanStdDev(inner, out Scalar iMean, out _);
+                            // 금속 반사광(Max)이 주변 평균(Mean)보다 압도적으로 높은지 분석
+                            boltFound = (innerMax / iMean.Val0) > 1.6 && innerMax > 80.0;
+                        }
                     }
                 }
 
@@ -220,46 +276,34 @@ namespace JYVision.Inspect
             }
         }
 
-        public void RunOnlyCheckMark()
-        {
-            if (_lastMatchedKeyRects.Count == 0) return;
-
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
-            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
-            Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
-
-            foreach (Rect key in _lastMatchedKeyRects)
-            {
-                displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
-                bool markOk = CheckMark(grayMat, key, displayList);
-            }
-
-            cameraForm?.ResetDisplay();
-            cameraForm?.AddRect(displayList);
-        }
-
-        // 각인 검사: 표준편차(표면 거칠기) 및 라플라시안(에지 강도) 분석
+        //------- 중앙 각인 유무 검사 -------
         private bool CheckMark(Mat grayMat, Rect key, List<DrawInspectInfo> displayList)
         {
+            // 건반의 정중앙 각인 예상 부위 ROI 설정
             Rect markRoi = new Rect(key.X + (int)(key.Width * 0.3f), key.Y + (int)(key.Height * 0.5f), (int)(key.Width * 0.4f), (int)(key.Height * 0.25f));
             markRoi = markRoi.Intersect(new Rect(0, 0, grayMat.Width, grayMat.Height));
             if (markRoi.Width <= 0 || markRoi.Height <= 0) return false;
 
             using (Mat roiMat = new Mat(grayMat, markRoi))
             {
+                // 표준편차로 표면 거칠기 확인 및 라플라시안으로 에지 강도 추출
                 Cv2.MeanStdDev(roiMat, out _, out Scalar stddev);
-                Mat lap = new Mat();
-                Cv2.Laplacian(roiMat, lap, MatType.CV_64F);
-                Cv2.MeanStdDev(lap, out _, out Scalar lapStd);
-                lap.Dispose();
+                using (Mat lap = new Mat())
+                {
+                    Cv2.Laplacian(roiMat, lap, MatType.CV_64F);
+                    Cv2.MeanStdDev(lap, out _, out Scalar lapStd);
 
-                bool markFound = stddev.Val0 > 3.0 && lapStd.Val0 > 1.5;
-                displayList.Add(new DrawInspectInfo(markRoi, $"Mark {(markFound ? "OK" : "NG")}", InspectType.InspNone, markFound ? DecisionType.Good : DecisionType.Defect));
-                return markFound;
+                    // 질감과 에지가 살아있으면 각인이 있는 것으로 판정
+                    bool markFound = stddev.Val0 > 3.0 && lapStd.Val0 > 1.5;
+                    displayList.Add(new DrawInspectInfo(markRoi, $"Mark {(markFound ? "OK" : "NG")}", InspectType.InspNone, markFound ? DecisionType.Good : DecisionType.Defect));
+                    return markFound;
+                }
             }
         }
 
-        // 체크박스 옵션에 따라 선택적으로 ROI 표시
+        //===== [그룹 5] 데이터 동기화 및 출력 제어 =====
+
+        //------- 옵션에 따른 결과 화면 표시 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
             if (_lastMatchedKeyRects.Count == 0) return;
@@ -267,56 +311,47 @@ namespace JYVision.Inspect
             var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
+            if (grayMat == null) return;
 
+            // 체크박스 설정 값에 따라 필요한 사각형들만 선별해서 리스트 구성
             foreach (Rect key in _lastMatchedKeyRects)
             {
-                // ✅ Keyboard 체크박스: 건반 외곽 ROI 표시
-                if (showKeyboard)
-                    displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
-
-                // ✅ Bolt 체크박스: 상/하 볼트 ROI 표시
+                if (showKeyboard) displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
                 if (showBolt)
                 {
                     CheckBolt(grayMat, key, BoltPosition.Top, displayList);
                     CheckBolt(grayMat, key, BoltPosition.Bottom, displayList);
                 }
-
-                // ✅ Mark 체크박스: 각인 ROI 표시
-                if (showMark)
-                    CheckMark(grayMat, key, displayList);
+                if (showMark) CheckMark(grayMat, key, displayList);
             }
 
             cameraForm?.ResetDisplay();
-            if (displayList.Count > 0)
-                cameraForm?.AddRect(displayList);
+            if (displayList.Count > 0) cameraForm?.AddRect(displayList);
         }
 
-        public bool TryInspect(InspWindow inspObj, InspectType inspType)
-        {
-            if (inspObj == null) return RunInspect(out _);
-            if (!UpdateInspData(inspObj)) return false;
-            _inspectBoard.Inspect(inspObj);
-            return DisplayResult(inspObj, inspType);
-        }
-
+        //------- 알고리즘별 입력 데이터(이미지/ROI) 갱신 -------
         public bool UpdateInspData(InspWindow inspWindow)
         {
             if (inspWindow == null) return false;
-            inspWindow.PatternLearn();
+            inspWindow.PatternLearn(); // 기본 패턴 학습 데이터 갱신
             foreach (var algo in inspWindow.AlgorithmList)
             {
+                // 현재 윈도우 좌표를 알고리즘 검사 영역으로 복사
                 algo.TeachRect = algo.InspRect = inspWindow.WindowArea;
+                // 알고리즘 채널에 맞는 이미지(Color/Gray) 할당
                 algo.SetInspData(Global.Inst.InspStage.GetMat(0, algo.ImageChannel));
             }
             return true;
         }
 
+        //------- 검사 결과 사각형 화면 출력 -------
         private bool DisplayResult(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) return false;
             List<DrawInspectInfo> totalArea = new List<DrawInspectInfo>();
             foreach (var algorithm in inspObj.AlgorithmList)
             {
+                // 지정된 검사 타입만 필터링해서 표시
                 if (inspType != InspectType.InspNone && algorithm.InspectType != inspType) continue;
                 if (algorithm.GetResultRect(out List<DrawInspectInfo> resultArea) > 0) totalArea.AddRange(resultArea);
             }
