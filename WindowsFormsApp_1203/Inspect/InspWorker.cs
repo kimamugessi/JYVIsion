@@ -140,63 +140,58 @@ namespace JYVision.Inspect
             int imgH = colorMat.Height;
             int imgW = colorMat.Width;
 
-            // 중앙 부근 3개 높이(35, 50, 65%)에서 샘플링하여 빗나감 방지
             int[] sampleYs = new[] { 0.35f, 0.50f, 0.65f }
                 .Select(r => Math.Max(0, Math.Min(matched.Y + (int)(matched.Height * r), imgH - 1)))
                 .ToArray();
 
-            // 가로 방향 5개 컬럼 샘플링
             int[] scanCols = Enumerable.Range(0, 5)
                 .Select(i => Math.Max(0, Math.Min((int)(matched.X + matched.Width * (0.2f + i * 0.15f)), imgW - 1)))
                 .ToArray();
 
-            long sumB = 0, sumG = 0, sumR = 0;
-            int cnt = 0;
+            int sumB = 0, sumG = 0, sumR = 0, cnt = 0;
             foreach (int sy in sampleYs)
             {
                 foreach (int x in scanCols)
                 {
                     Vec3b px = colorMat.At<Vec3b>(sy, x);
-                    if ((px.Item0 + px.Item1 + px.Item2) / 3 < 40) continue; // 어두운 픽셀은 건너뜀
+                    if ((px.Item0 + px.Item1 + px.Item2) / 3 < 40) continue;
                     sumB += px.Item0; sumG += px.Item1; sumR += px.Item2; cnt++;
                 }
             }
 
-            if (cnt == 0) return matched; // 샘플링 안되면 원본 반환
+            if (cnt == 0) return matched;
             Vec3b refColor = new Vec3b((byte)(sumB / cnt), (byte)(sumG / cnt), (byte)(sumR / cnt));
 
-            // 현재 건반의 주력 색상 판별
             bool isYellow = refColor.Item2 > 150 && refColor.Item1 > 150 && refColor.Item0 < 100;
             bool isRed = refColor.Item2 > 150 && refColor.Item1 < 100 && refColor.Item0 < 100;
             bool isBlue = refColor.Item0 > 100 && refColor.Item2 < 100;
 
-            // 색상별 알고리즘 감도 조절
             int colorTolerance = isYellow ? 80 : isRed ? 70 : isBlue ? 65 : 60;
             int gapLimit = isYellow ? 40 : isRed ? 35 : 30;
 
-            int maxScan = (int)(matched.Height * 2.0f);
-            int topY = matched.Y + (int)(matched.Height * 0.5f);
-            int bottomY = topY;
+            // ✅ centerY를 따로 저장 (위/아래 스캔 모두 여기서 출발)
+            int centerY = matched.Y + (int)(matched.Height * 0.5f);
+            int topY = centerY;
+            int bottomY = centerY;
             int gap = 0;
 
-            // 위로 훑으면서 색상이 변하는 지점 찾기
-            for (int y = topY; y >= Math.Max(0, matched.Y - maxScan); y--)
+            // ✅ 위쪽 스캔: matched.Y를 절대 넘지 않음
+            for (int y = centerY; y >= Math.Max(0, matched.Y); y--)
             {
                 bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3;
                 if (match) { topY = y; gap = 0; }
                 else if (++gap > gapLimit) break;
             }
 
-            // 아래로 훑으면서 영역 끝 지점 찾기
+            // ✅ 아래쪽 스캔: centerY에서 출발 (topY 아님), matched.Bottom을 넘지 않음
             gap = 0;
-            for (int y = topY; y <= Math.Min(imgH - 1, matched.Bottom + maxScan); y++)
+            for (int y = centerY; y <= Math.Min(imgH - 1, matched.Bottom); y++)
             {
                 bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3;
                 if (match) { bottomY = y; gap = 0; }
                 else if (++gap > gapLimit) break;
             }
 
-            // 상하 5% 정도 혹은 최소 15px의 여유 공간을 더해줌
             int margin = Math.Max(15, (int)((bottomY - topY) * 0.05f));
             int finalTop = Math.Max(0, topY - margin);
             int finalBottom = Math.Min(imgH - 1, bottomY + margin);

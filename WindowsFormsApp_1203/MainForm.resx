@@ -118,54 +118,105 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="modelNewMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="modelNewMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="modelNewMenuItem.Text" xml:space="preserve">
+    <value>Model New</value>
+  </data>
+  <data name="modelOpenMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="modelOpenMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="modelOpenMenuItem.Text" xml:space="preserve">
+    <value>Model Open</value>
+  </data>
+  <data name="modelSaveMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="modelSaveMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="modelSaveMenuItem.Text" xml:space="preserve">
+    <value>Model Save</value>
+  </data>
+  <data name="modelSaveAsMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="modelSaveAsMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="modelSaveAsMenuItem.Text" xml:space="preserve">
+    <value>Model Save As</value>
+  </data>
+  <data name="toolStripSeparator1.Size" type="System.Drawing.Size, System.Drawing">
+    <value>203, 6</value>
+  </data>
+  <data name="imageOpenToolStripMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="imageOpenToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="imageOpenToolStripMenuItem.Text" xml:space="preserve">
+    <value>Image Open</value>
+  </data>
+  <data name="imageSaveToolStripMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="imageSaveToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="imageSaveToolStripMenuItem.Text" xml:space="preserve">
+    <value>Image Save</value>
+  </data>
+  <data name="fileToolStripMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
   <data name="fileToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>43, 23</value>
   </data>
   <data name="fileToolStripMenuItem.Text" xml:space="preserve">
     <value>File</value>
   </data>
-  <data name="modelNewMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>179, 24</value>
-  </data>
-  <data name="modelNewMenuItem.Text" xml:space="preserve">
-    <value>Model New</value>
-  </data>
-  <data name="modelOpenMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>179, 24</value>
-  </data>
-  <data name="modelOpenMenuItem.Text" xml:space="preserve">
-    <value>Model Open</value>
-  </data>
-  <data name="modelSaveMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>179, 24</value>
-  </data>
-  <data name="modelSaveMenuItem.Text" xml:space="preserve">
-    <value>Model Save</value>
-  </data>
-  <data name="modelSaveAsMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>179, 24</value>
-  </data>
-  <data name="modelSaveAsMenuItem.Text" xml:space="preserve">
-    <value>Model Save As</value>
-  </data>
-  <data name="toolStripSeparator1.Size" type="System.Drawing.Size, System.Drawing">
-    <value>176, 6</value>
-  </data>
-  <data name="imageOpenToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>179, 24</value>
-  </data>
-  <data name="imageOpenToolStripMenuItem.Text" xml:space="preserve">
-    <value>image Open</value>
-  </data>
-  <data name="imageSaveToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>179, 24</value>
-  </data>
-  <data name="imageSaveToolStripMenuItem.Text" xml:space="preserve">
-    <value>Image Save</value>
-  </data>
   <metadata name="MainMenu.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
+  <data name="setupToolStripMenuItem1.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="setupToolStripMenuItem1.Text" xml:space="preserve">
+    <value>Setup</value>
+  </data>
+  <data name="setupToolStripMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="setupToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>58, 23</value>
+  </data>
+  <data name="setupToolStripMenuItem.Text" xml:space="preserve">
+    <value>Setup</value>
+  </data>
+  <data name="cycleModeMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>206, 24</value>
+  </data>
+  <data name="cycleModeMenuItem.Text" xml:space="preserve">
+    <value>Cycle Mode</value>
+  </data>
+  <data name="inspectToolStripMenuItem.Font" type="System.Drawing.Font, System.Drawing">
+    <value>Segoe UI, 9.163636pt</value>
+  </data>
+  <data name="inspectToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>67, 23</value>
+  </data>
+  <data name="inspectToolStripMenuItem.Text" xml:space="preserve">
+    <value>Inspect</value>
+  </data>
   <data name="MainMenu.Location" type="System.Drawing.Point, System.Drawing">
     <value>3, 64</value>
   </data>
@@ -194,30 +245,6 @@
   </data>
   <data name="&gt;&gt;MainMenu.ZOrder" xml:space="preserve">
     <value>0</value>
-  </data>
-  <data name="setupToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>59, 23</value>
-  </data>
-  <data name="setupToolStripMenuItem.Text" xml:space="preserve">
-    <value>Setup</value>
-  </data>
-  <data name="setupToolStripMenuItem1.Size" type="System.Drawing.Size, System.Drawing">
-    <value>122, 24</value>
-  </data>
-  <data name="setupToolStripMenuItem1.Text" xml:space="preserve">
-    <value>Setup</value>
-  </data>
-  <data name="inspectToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>68, 23</value>
-  </data>
-  <data name="inspectToolStripMenuItem.Text" xml:space="preserve">
-    <value>Inspect</value>
-  </data>
-  <data name="cycleModeMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>160, 24</value>
-  </data>
-  <data name="cycleModeMenuItem.Text" xml:space="preserve">
-    <value>Cycle Mode</value>
   </data>
   <metadata name="$this.Localizable" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>

@@ -39,9 +39,11 @@
             // 
             // btnSelImageDir
             // 
-            this.btnSelImageDir.Location = new System.Drawing.Point(284, 36);
+            this.btnSelImageDir.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.btnSelImageDir.Location = new System.Drawing.Point(325, 42);
+            this.btnSelImageDir.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnSelImageDir.Name = "btnSelImageDir";
-            this.btnSelImageDir.Size = new System.Drawing.Size(39, 21);
+            this.btnSelImageDir.Size = new System.Drawing.Size(45, 24);
             this.btnSelImageDir.TabIndex = 13;
             this.btnSelImageDir.Text = "...";
             this.btnSelImageDir.UseVisualStyleBackColor = true;
@@ -49,25 +51,31 @@
             // 
             // txtImageDir
             // 
-            this.txtImageDir.Location = new System.Drawing.Point(79, 37);
+            this.txtImageDir.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.txtImageDir.Location = new System.Drawing.Point(90, 43);
+            this.txtImageDir.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtImageDir.Name = "txtImageDir";
-            this.txtImageDir.Size = new System.Drawing.Size(184, 21);
+            this.txtImageDir.Size = new System.Drawing.Size(210, 26);
             this.txtImageDir.TabIndex = 12;
             // 
             // lbImageDir
             // 
             this.lbImageDir.AutoSize = true;
-            this.lbImageDir.Location = new System.Drawing.Point(3, 40);
+            this.lbImageDir.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbImageDir.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.lbImageDir.Location = new System.Drawing.Point(3, 47);
             this.lbImageDir.Name = "lbImageDir";
-            this.lbImageDir.Size = new System.Drawing.Size(69, 12);
+            this.lbImageDir.Size = new System.Drawing.Size(83, 19);
             this.lbImageDir.TabIndex = 11;
             this.lbImageDir.Text = "이미지 경로";
             // 
             // btnApply
             // 
-            this.btnApply.Location = new System.Drawing.Point(264, 64);
+            this.btnApply.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.btnApply.Location = new System.Drawing.Point(302, 75);
+            this.btnApply.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnApply.Name = "btnApply";
-            this.btnApply.Size = new System.Drawing.Size(59, 26);
+            this.btnApply.Size = new System.Drawing.Size(67, 30);
             this.btnApply.TabIndex = 10;
             this.btnApply.Text = "적용";
             this.btnApply.UseVisualStyleBackColor = true;
@@ -75,9 +83,11 @@
             // 
             // btnSelModelDir
             // 
-            this.btnSelModelDir.Location = new System.Drawing.Point(284, 9);
+            this.btnSelModelDir.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.btnSelModelDir.Location = new System.Drawing.Point(325, 10);
+            this.btnSelModelDir.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnSelModelDir.Name = "btnSelModelDir";
-            this.btnSelModelDir.Size = new System.Drawing.Size(39, 21);
+            this.btnSelModelDir.Size = new System.Drawing.Size(45, 24);
             this.btnSelModelDir.TabIndex = 9;
             this.btnSelModelDir.Text = "...";
             this.btnSelModelDir.UseVisualStyleBackColor = true;
@@ -85,24 +95,29 @@
             // 
             // txtModelDir
             // 
-            this.txtModelDir.Location = new System.Drawing.Point(79, 9);
+            this.txtModelDir.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.txtModelDir.Location = new System.Drawing.Point(90, 10);
+            this.txtModelDir.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtModelDir.Name = "txtModelDir";
-            this.txtModelDir.Size = new System.Drawing.Size(184, 21);
+            this.txtModelDir.Size = new System.Drawing.Size(210, 26);
             this.txtModelDir.TabIndex = 8;
             // 
             // lbModelDir
             // 
             this.lbModelDir.AutoSize = true;
-            this.lbModelDir.Location = new System.Drawing.Point(3, 15);
+            this.lbModelDir.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbModelDir.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.lbModelDir.Location = new System.Drawing.Point(3, 18);
             this.lbModelDir.Name = "lbModelDir";
-            this.lbModelDir.Size = new System.Drawing.Size(57, 12);
+            this.lbModelDir.Size = new System.Drawing.Size(69, 19);
             this.lbModelDir.TabIndex = 7;
             this.lbModelDir.Text = "모델 경로";
             // 
             // PathSetting
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
             this.Controls.Add(this.btnSelImageDir);
             this.Controls.Add(this.txtImageDir);
             this.Controls.Add(this.lbImageDir);
@@ -110,8 +125,9 @@
             this.Controls.Add(this.btnSelModelDir);
             this.Controls.Add(this.txtModelDir);
             this.Controls.Add(this.lbModelDir);
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "PathSetting";
-            this.Size = new System.Drawing.Size(342, 107);
+            this.Size = new System.Drawing.Size(391, 125);
             this.ResumeLayout(false);
             this.PerformLayout();
 

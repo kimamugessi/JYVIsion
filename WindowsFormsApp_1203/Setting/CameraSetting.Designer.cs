@@ -38,9 +38,11 @@
             // 
             // btnApply
             // 
-            this.btnApply.Location = new System.Drawing.Point(128, 42);
+            this.btnApply.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.btnApply.Location = new System.Drawing.Point(146, 73);
+            this.btnApply.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnApply.Name = "btnApply";
-            this.btnApply.Size = new System.Drawing.Size(91, 26);
+            this.btnApply.Size = new System.Drawing.Size(104, 30);
             this.btnApply.TabIndex = 5;
             this.btnApply.Text = "적용";
             this.btnApply.UseVisualStyleBackColor = true;
@@ -49,49 +51,56 @@
             // cbCameraType
             // 
             this.cbCameraType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbCameraType.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
             this.cbCameraType.FormattingEnabled = true;
-            this.cbCameraType.Location = new System.Drawing.Point(78, 6);
+            this.cbCameraType.Location = new System.Drawing.Point(89, 7);
+            this.cbCameraType.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cbCameraType.Name = "cbCameraType";
-            this.cbCameraType.Size = new System.Drawing.Size(141, 20);
+            this.cbCameraType.Size = new System.Drawing.Size(161, 27);
             this.cbCameraType.TabIndex = 4;
             // 
             // lbCameraType
             // 
             this.lbCameraType.AutoSize = true;
-            this.lbCameraType.Location = new System.Drawing.Point(3, 9);
+            this.lbCameraType.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.lbCameraType.Location = new System.Drawing.Point(3, 10);
             this.lbCameraType.Name = "lbCameraType";
-            this.lbCameraType.Size = new System.Drawing.Size(69, 12);
+            this.lbCameraType.Size = new System.Drawing.Size(83, 19);
             this.lbCameraType.TabIndex = 3;
             this.lbCameraType.Text = "카메라 종료";
             // 
             // lbExposure
             // 
             this.lbExposure.AutoSize = true;
-            this.lbExposure.Location = new System.Drawing.Point(3, 35);
+            this.lbExposure.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.lbExposure.Location = new System.Drawing.Point(3, 44);
             this.lbExposure.Name = "lbExposure";
-            this.lbExposure.Size = new System.Drawing.Size(53, 12);
+            this.lbExposure.Size = new System.Drawing.Size(65, 19);
             this.lbExposure.TabIndex = 3;
             this.lbExposure.Text = "노출시간";
             // 
             // tbExposure
             // 
-            this.tbExposure.Location = new System.Drawing.Point(77, 33);
+            this.tbExposure.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.tbExposure.Location = new System.Drawing.Point(88, 41);
+            this.tbExposure.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.tbExposure.Name = "tbExposure";
-            this.tbExposure.Size = new System.Drawing.Size(107, 21);
+            this.tbExposure.Size = new System.Drawing.Size(122, 26);
             this.tbExposure.TabIndex = 6;
             // 
             // lbExpUnit
             // 
             this.lbExpUnit.AutoSize = true;
-            this.lbExpUnit.Location = new System.Drawing.Point(190, 36);
+            this.lbExpUnit.Font = new System.Drawing.Font("Segoe UI", 9.163636F);
+            this.lbExpUnit.Location = new System.Drawing.Point(217, 45);
             this.lbExpUnit.Name = "lbExpUnit";
-            this.lbExpUnit.Size = new System.Drawing.Size(23, 12);
+            this.lbExpUnit.Size = new System.Drawing.Size(27, 19);
             this.lbExpUnit.TabIndex = 3;
             this.lbExpUnit.Text = "ms";
             // 
             // CameraSetting
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.tbExposure);
             this.Controls.Add(this.btnApply);
@@ -99,8 +108,9 @@
             this.Controls.Add(this.lbExpUnit);
             this.Controls.Add(this.lbExposure);
             this.Controls.Add(this.lbCameraType);
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "CameraSetting";
-            this.Size = new System.Drawing.Size(248, 123);
+            this.Size = new System.Drawing.Size(283, 144);
             this.ResumeLayout(false);
             this.PerformLayout();
 

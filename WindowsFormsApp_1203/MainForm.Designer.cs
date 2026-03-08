@@ -55,31 +55,31 @@
             this.toolStripSeparator1,
             this.imageOpenToolStripMenuItem,
             this.imageSaveToolStripMenuItem});
-            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             resources.ApplyResources(this.fileToolStripMenuItem, "fileToolStripMenuItem");
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             // 
             // modelNewMenuItem
             // 
-            this.modelNewMenuItem.Name = "modelNewMenuItem";
             resources.ApplyResources(this.modelNewMenuItem, "modelNewMenuItem");
+            this.modelNewMenuItem.Name = "modelNewMenuItem";
             this.modelNewMenuItem.Click += new System.EventHandler(this.modelNewMenuItem_Click);
             // 
             // modelOpenMenuItem
             // 
-            this.modelOpenMenuItem.Name = "modelOpenMenuItem";
             resources.ApplyResources(this.modelOpenMenuItem, "modelOpenMenuItem");
+            this.modelOpenMenuItem.Name = "modelOpenMenuItem";
             this.modelOpenMenuItem.Click += new System.EventHandler(this.modelOpenMenuItem_Click);
             // 
             // modelSaveMenuItem
             // 
-            this.modelSaveMenuItem.Name = "modelSaveMenuItem";
             resources.ApplyResources(this.modelSaveMenuItem, "modelSaveMenuItem");
+            this.modelSaveMenuItem.Name = "modelSaveMenuItem";
             this.modelSaveMenuItem.Click += new System.EventHandler(this.modelSaveMenuItem_Click);
             // 
             // modelSaveAsMenuItem
             // 
-            this.modelSaveAsMenuItem.Name = "modelSaveAsMenuItem";
             resources.ApplyResources(this.modelSaveAsMenuItem, "modelSaveAsMenuItem");
+            this.modelSaveAsMenuItem.Name = "modelSaveAsMenuItem";
             this.modelSaveAsMenuItem.Click += new System.EventHandler(this.modelSaveAsMenuItem_Click);
             // 
             // toolStripSeparator1
@@ -89,14 +89,14 @@
             // 
             // imageOpenToolStripMenuItem
             // 
-            this.imageOpenToolStripMenuItem.Name = "imageOpenToolStripMenuItem";
             resources.ApplyResources(this.imageOpenToolStripMenuItem, "imageOpenToolStripMenuItem");
+            this.imageOpenToolStripMenuItem.Name = "imageOpenToolStripMenuItem";
             this.imageOpenToolStripMenuItem.Click += new System.EventHandler(this.imageOpenToolStripMenuItem_Click_1);
             // 
             // imageSaveToolStripMenuItem
             // 
-            this.imageSaveToolStripMenuItem.Name = "imageSaveToolStripMenuItem";
             resources.ApplyResources(this.imageSaveToolStripMenuItem, "imageSaveToolStripMenuItem");
+            this.imageSaveToolStripMenuItem.Name = "imageSaveToolStripMenuItem";
             // 
             // MainMenu
             // 
@@ -112,8 +112,8 @@
             // 
             this.setupToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.setupToolStripMenuItem1});
-            this.setupToolStripMenuItem.Name = "setupToolStripMenuItem";
             resources.ApplyResources(this.setupToolStripMenuItem, "setupToolStripMenuItem");
+            this.setupToolStripMenuItem.Name = "setupToolStripMenuItem";
             // 
             // setupToolStripMenuItem1
             // 
@@ -125,8 +125,8 @@
             // 
             this.inspectToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.cycleModeMenuItem});
-            this.inspectToolStripMenuItem.Name = "inspectToolStripMenuItem";
             resources.ApplyResources(this.inspectToolStripMenuItem, "inspectToolStripMenuItem");
+            this.inspectToolStripMenuItem.Name = "inspectToolStripMenuItem";
             // 
             // cycleModeMenuItem
             // 

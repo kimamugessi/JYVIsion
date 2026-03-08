@@ -22,7 +22,7 @@ namespace JYVision.Algorithm
         [XmlIgnore]
         private List<Mat> _templateImages = new List<Mat>(); // 매칭에 사용할 마스터 이미지들
 
-        public int MatchScore { get; set; } = 20; // 합격 기준 최소 점수 (Threshold)
+        public int MatchScore { get; set; } = 18; // 합격 기준 최소 점수 (Threshold)
 
         [XmlIgnore]
         public List<MatchResult> MatchResults { get; set; } = new List<MatchResult>(); // 검출된 모든 결과 리스트
