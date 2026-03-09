@@ -87,7 +87,7 @@ namespace JYVision
 
             // 4. 모델 트리 구조창 (우측 하단 30% 비중)
             var modelTreeWindow = new ModelTreeForm();
-            modelTreeWindow.Show(resultForm.Pane, DockAlignment.Right, 0.3);
+            modelTreeWindow.Show(resultForm.Pane, DockAlignment.Right, 0.27);
 
             // 5. 운전 제어창 (모델 트리와 같은 영역에 탭으로 묶음)
             var runWindow = new RunForm();

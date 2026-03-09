@@ -1,224 +1,364 @@
-﻿using System;
+﻿using BrightIdeasSoftware;
+using JYVision.Core;
+using JYVision.Inspect;
+using JYVision.Teach;
+using OpenCvSharp.Extensions;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using WeifenLuo.WinFormsUI.Docking;
-using JYVision.Inspect;
-using BrightIdeasSoftware;
-using JYVision.Teach;
+
+// ✅ OpenCvSharp과의 모호한 참조 해결
+using Size = System.Drawing.Size;
+using Point = System.Drawing.Point;
 
 namespace JYVision
 {
+    // ===== 누적 행 데이터 모델 =====
+    public class InspSummaryRow
+    {
+        public int No { get; set; }
+        public string Time { get; set; }
+        public int BoltNg { get; set; }
+        public int MarkNg { get; set; }
+        public int TotalNg => BoltNg + MarkNg;
+        public string Status => TotalNg > 0 ? "NG" : "OK";
+        public Bitmap Thumbnail { get; set; }   // 리스트 썸네일 (80x60)
+        public Bitmap PreviewImage { get; set; }   // 상세 패널용 큰 이미지
+    }
+
     public partial class ResultForm : DockContent
     {
-        //검사 결과를 보여주기 위한 컨트롤 추가
-        private SplitContainer _splitContainer;
-        private TreeListView _treeListView;
-        private TextBox _txtDetails;
+        private Panel _topPanel;
+        private Label _lblTotal;
+        private Button _btnClear;
+        private SplitContainer _split;
+        private ObjectListView _listView;
+        private ImageList _imgList;
+
+        // 상세 패널 컨트롤
+        private Panel _detailPanel;
+        private PictureBox _picPreview;
+        private Label _lblBoltNg;
+        private Label _lblMarkNg;
+        private Label _lblTotalNg;
+        private Label _lblStatus;
+
+        private readonly List<InspSummaryRow> _rows = new List<InspSummaryRow>();
+        private int _runCount = 0;
 
         public ResultForm()
         {
             InitializeComponent();
-
-            //컨트롤 초기화, 아래 함수 구현할것
-            InitTreeListView();
+            InitResultLayout(); // ✅ Control.InitLayout() 충돌 방지
         }
 
-        private void InitTreeListView()
+        // ✅ InitResultLayout으로 rename (Control.InitLayout 숨김 방지)
+        private void InitResultLayout()
         {
-            // SplitContainer 사용하여 상하 분할 레이아웃 구성
-            _splitContainer = new SplitContainer()
+            // ── 상단 버튼바 ──────────────────────────────────
+            _topPanel = new Panel
             {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 120,
-                Panel1MinSize = 70,
-                Panel2MinSize = 70
+                Dock = DockStyle.Top,
+                Height = 36,
+                BackColor = Color.FromArgb(45, 45, 48)
             };
 
-            //TreeListView 검사 결과 트리 생성
-            _treeListView = new TreeListView()
+            _btnClear = new Button
+            {
+                Text = "초기화",
+                Width = 70,
+                Height = 26,
+                Location = new Point(6, 5),
+                BackColor = Color.FromArgb(80, 80, 85),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            _btnClear.FlatAppearance.BorderColor = Color.Gray;
+            _btnClear.Click += (s, e) => ClearAll();
+
+            _lblTotal = new Label
+            {
+                AutoSize = false,
+                Width = 340,
+                Height = 26,
+                Location = new Point(86, 5),
+                ForeColor = Color.White,
+                Font = new Font("Arial", 9, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Text = "총 0건  |  Bolt NG: 0  |  Mark NG: 0"
+            };
+
+            _topPanel.Controls.AddRange(new Control[] { _btnClear, _lblTotal });
+
+            // ── SplitContainer (좌: 누적 리스트 / 우: 상세) ──
+            _split = new SplitContainer
             {
                 Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                Panel1MinSize = 80,  // ✅ 작게 설정 (SplitterDistance 에러 방지)
+                Panel2MinSize = 50
+            };
+
+            // ✅ 폼 크기 확정 후 비율 설정 (SizeChanged 사용)
+            _split.SizeChanged += (s, e) =>
+            {
+                if (_split.Width > 100 && _split.SplitterDistance < 50)
+                    _split.SplitterDistance = (int)(_split.Width * 0.6);
+            };
+
+            // ── 좌: ImageList ─────────────────────────────────
+            _imgList = new ImageList
+            {
+                ImageSize = new Size(80, 60),
+                ColorDepth = ColorDepth.Depth32Bit
+            };
+
+            // ── 좌: ObjectListView ────────────────────────────
+            _listView = new ObjectListView
+            {
+                Dock = DockStyle.Fill,
+                View = View.Details,
                 FullRowSelect = true,
                 ShowGroups = false,
-                UseFiltering = true,
-                OwnerDraw = true,
+                GridLines = true,
+                RowHeight = 64,
+                SmallImageList = _imgList,
+                UseAlternatingBackColors = true,
+                AlternateRowBackColor = Color.FromArgb(245, 245, 255),
                 MultiSelect = false,
-                GridLines = true
-            };
-            _treeListView.SelectionChanged += TreeListView_SelectionChanged;
-
-            _treeListView.CanExpandGetter = x => true;
-
-            _treeListView.ChildrenGetter = x =>
-            {
-                if (x is InspWindow w)
-                    return w.InspResultList;
-                return new List<InspResult>();
+                HideSelection = false
             };
 
-            //컬럼 추가
-            var colUID = new OLVColumn("UID", "")
+            // ── 컬럼 정의 ─────────────────────────────────────
+            var colThumb = new OLVColumn("이미지", "")
             {
-                Width = 100,
+                Width = 75,
                 IsEditable = false,
-                AspectGetter = obj =>
-                {
-                    if (obj is InspWindow win)
-                        return win.UID;
-                    if (obj is InspResult res)
-                        return res.InspType.ToString();
-                    return "";
-                }
-            };
-
-            var colAlgo = new OLVColumn("Algorithm", "")
-            {
-                Width = 150,
-                IsEditable = false,
-                AspectGetter = obj =>
-                {
-                    if (obj is InspResult res)
-                        return res.InspType.ToString();
-                    return "";
-                }
-            };
-
-            var colStatus = new OLVColumn("Status", "IsDefect")
-            {
-                Width = 80,
                 TextAlign = HorizontalAlignment.Center,
-                AspectGetter = obj =>
+                AspectGetter = _ => "",
+                ImageGetter = obj =>
                 {
-                    if (obj is InspResult res)
-                        return res.IsDefect ? "NG" : "OK";
-                    return "";
+                    if (obj is InspSummaryRow row && row.Thumbnail != null)
+                    {
+                        string key = $"row_{row.No}";
+                        if (!_imgList.Images.ContainsKey(key))
+                            _imgList.Images.Add(key, row.Thumbnail);
+                        return key;
+                    }
+                    return null;
                 }
             };
-
-            var colValue = new OLVColumn("Result", "Result")
+            var colNo = new OLVColumn("No", nameof(InspSummaryRow.No))
             {
-                Width = 80,
+                Width = 40,
                 TextAlign = HorizontalAlignment.Center,
-                AspectGetter = obj =>
+                IsEditable = false
+            };
+            var colTime = new OLVColumn("시간", nameof(InspSummaryRow.Time))
+            {
+                Width = 75,
+                TextAlign = HorizontalAlignment.Center,
+                IsEditable = false
+            };
+            var colBolt = new OLVColumn("Bolt NG", nameof(InspSummaryRow.BoltNg))
+            {
+                Width = 65,
+                TextAlign = HorizontalAlignment.Center,
+                IsEditable = false
+            };
+            var colMark = new OLVColumn("Mark NG", nameof(InspSummaryRow.MarkNg))
+            {
+                Width = 65,
+                TextAlign = HorizontalAlignment.Center,
+                IsEditable = false
+            };
+            var colStatus = new OLVColumn("판정", nameof(InspSummaryRow.Status))
+            {
+                Width = 55,
+                TextAlign = HorizontalAlignment.Center,
+                IsEditable = false
+            };
+
+            _listView.Columns.AddRange(new OLVColumn[]
+                { colThumb, colNo, colTime, colBolt, colMark, colStatus });
+
+            // ✅ NG 행 빨강 Bold 강조
+            _listView.RowFormatter = item =>
+            {
+                if (item.RowObject is InspSummaryRow r && r.TotalNg > 0)
                 {
-                    if (obj is InspResult res)
-                        return res.ResultValue;
-                    return "";
+                    item.ForeColor = Color.Red;
+                    item.Font = new Font(_listView.Font, FontStyle.Bold);
                 }
             };
 
-            // 컬럼 추가
-            _treeListView.Columns.AddRange(new OLVColumn[] { colUID, colAlgo, colStatus, colValue });
+            _listView.SelectionChanged += OnRowSelected;
+            _split.Panel1.Controls.Add(_listView);
 
-
-            // 검사 상세 정보 텍스트박스 생성
-            _txtDetails = new TextBox()
+            // ── 우: 상세 패널 ─────────────────────────────────
+            _detailPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                Font = new Font("Arial", 10),
-                ReadOnly = true
+                BackColor = Color.FromArgb(30, 30, 35),
+                Padding = new Padding(8) // 테두리 여백
             };
 
-            // 컨테이너에 컨트롤 추가
-            _splitContainer.Panel1.Controls.Add(_treeListView);
-            _splitContainer.Panel2.Controls.Add(_txtDetails);
-            Controls.Add(_splitContainer);
-        }
-
-        public void AddModelResult(Model curModel)
-        {
-            if (curModel is null)
-                return;
-
-            _treeListView.SetObjects(curModel.InspWindowList);
-
-            foreach (var window in curModel.InspWindowList)
+            // ✅ 1. 프리뷰 이미지를 왼쪽에 '고정 크기'로 배치 (스케치처럼 정사각형 비율)
+            _picPreview = new PictureBox
             {
-                _treeListView.Expand(window);
-            }
-        }
+                Dock = DockStyle.Left,
+                Width = 150, // 필요에 따라 이미지 너비를 조절하세요 (ex: 160~200)
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Black,
+                BorderStyle = BorderStyle.FixedSingle
+            };
 
-        public void AddWindowResult(InspWindow inspWindow)
-        {
-            if (inspWindow is null)
-                return;
-
-            _treeListView.SetObjects(new List<InspWindow> { inspWindow });
-            _treeListView.Expand(inspWindow);
-
-            if(inspWindow.InspResultList.Count > 0)
+            // ✅ 2. 라벨 패널을 남은 영역(Fill)에 배치하여 텍스트가 이미지 바로 옆에 오도록 설정
+            Panel _labelPanel = new Panel
             {
-                InspResult inspResult = inspWindow.InspResultList[0];
-                ShowDedtail(inspResult);
-            }
-        }
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
 
-        //실제 검사가 되었을때, 검사 결과를 추가하는 함수
-        public void AddInspResult(InspResult inspResult)
-        {
-            if (inspResult is null)
-                return;
-
-            // 현재 트리에 있는 객체 리스트 가져오기
-            var existingResults = _treeListView.Objects as List<InspResult>;
-
-            if (existingResults == null)
-                existingResults = new List<InspResult>();
-
-            // 기존 검사 결과에서 같은 BodyID를 가진 부모 찾기
-            var parentResult = existingResults.FirstOrDefault(r => r.GroupID == inspResult.GroupID);
-
-            existingResults.Add(inspResult);
-
-            // TreeListView 업데이트
-            _treeListView.SetObjects(existingResults);
-        }
-
-        //해당 트리 리스트 뷰 선택시, 상세 정보 텍스트 박스에 표시
-        private void TreeListView_SelectionChanged(object sender, EventArgs e)
-        {
-            if (_treeListView.SelectedObject == null)
+            // ✅ 3. 수치 라벨 생성 헬퍼 (위치 지정 방식 변경)
+            Label MakeLabel(string text, int y, Color color) => new Label
             {
-                _txtDetails.Text = string.Empty;
+                AutoSize = true, // 텍스트 길이에 맞춰 딱 맞게 표시
+                Location = new Point(15, y), // 이미지 우측 경계로부터 15px 떨어져서 시작
+                ForeColor = color,
+                Font = new Font("Arial", 11, FontStyle.Bold),
+                BackColor = Color.Transparent,
+                Text = text
+            };
+
+            // ✅ 4. y좌표 간격을 주며 세로로 배치
+            _lblBoltNg = MakeLabel("Bolt NG  : -", 20, Color.OrangeRed);
+            _lblMarkNg = MakeLabel("Mark NG  : -", 60, Color.OrangeRed);
+            _lblTotalNg = MakeLabel("Total NG : -", 100, Color.Yellow);
+            _lblStatus = MakeLabel("판  정   : -", 140, Color.White);
+
+            // 라벨 패널에 추가
+            _labelPanel.Controls.Add(_lblBoltNg);
+            _labelPanel.Controls.Add(_lblMarkNg);
+            _labelPanel.Controls.Add(_lblTotalNg);
+            _labelPanel.Controls.Add(_lblStatus);
+
+            // ✅ 5. 상세 패널에 조립 (순서 중요: Left 도킹인 _picPreview가 나중에 들어가야 정상 배치됨)
+            _detailPanel.Controls.Add(_labelPanel);
+            _detailPanel.Controls.Add(_picPreview);
+
+            _split.Panel2.Controls.Add(_detailPanel);
+
+            Controls.Add(_split);
+            Controls.Add(_topPanel); // ✅ Top은 마지막에 추가해야 Fill과 충돌 없음
+        }
+
+        // ===== InspWorker → 누적 행 추가 =====
+        public void UpdateNgSummary(int boltNg, int markNg, Bitmap capturedImage = null)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => UpdateNgSummary(boltNg, markNg, capturedImage)));
                 return;
             }
 
-            if (_treeListView.SelectedObject is InspResult result)
+            _runCount++;
+
+            // 썸네일 생성 (80x60)
+            Bitmap thumb = null;
+            if (capturedImage != null)
+                thumb = ResizeBitmap(capturedImage, 80, 60);
+
+            var row = new InspSummaryRow
             {
-                ShowDedtail(result);
-            }
-            else if (_treeListView.SelectedObject is InspWindow window)
-            {
-                var infos = window.InspResultList.Select(r => $" -{r.ObjectID}: {r.ResultInfos}").ToList();
-                _txtDetails.Text = $"{window.UID}\r\n" +
-                    string.Join("\r\n", infos);
-            }
+                No = _runCount,
+                Time = DateTime.Now.ToString("HH:mm:ss"),
+                BoltNg = boltNg,
+                MarkNg = markNg,
+                Thumbnail = thumb,
+                PreviewImage = capturedImage
+            };
+
+            _rows.Add(row);
+            _listView.SetObjects(_rows);
+            _listView.EnsureModelVisible(row);
+
+            // ✅ 최신 행 자동 선택 → 상세 패널 갱신
+            _listView.SelectObject(row);
+            RefreshSummaryLabel();
         }
 
-        private void ShowDedtail(InspResult result)
+        // ===== 행 선택 → 상세 패널 갱신 =====
+        private void OnRowSelected(object sender, EventArgs e)
         {
-            if (result is null)
-                return;
-
-            _txtDetails.Text = result.ResultInfos.ToString();
-
-            if (result.ResultRectList != null)
-            {
-                CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
-                if (cameraForm != null)
-                {
-                    cameraForm.AddRect(result.ResultRectList);
-                }
-            }
+            if (_listView.SelectedObject is InspSummaryRow row)
+                ShowDetail(row);
         }
+
+        private void ShowDetail(InspSummaryRow row)
+        {
+            _picPreview.Image = row.PreviewImage;
+
+            _lblBoltNg.Text = $"Bolt NG  : {row.BoltNg}";
+            _lblBoltNg.ForeColor = row.BoltNg > 0 ? Color.OrangeRed : Color.LimeGreen;
+
+            _lblMarkNg.Text = $"Mark NG  : {row.MarkNg}";
+            _lblMarkNg.ForeColor = row.MarkNg > 0 ? Color.OrangeRed : Color.LimeGreen;
+
+            _lblTotalNg.Text = $"Total NG : {row.TotalNg}";
+            _lblTotalNg.ForeColor = row.TotalNg > 0 ? Color.Yellow : Color.LimeGreen;
+
+            _lblStatus.Text = $"판  정   : {row.Status}";
+            _lblStatus.ForeColor = row.TotalNg > 0 ? Color.Red : Color.LimeGreen;
+            _lblStatus.Font = new Font("Arial", 13, FontStyle.Bold);
+        }
+
+        // ===== 누적 통계 라벨 갱신 =====
+        private void RefreshSummaryLabel()
+        {
+            int total = _rows.Count;
+            int ngCount = _rows.Count(r => r.TotalNg > 0);
+            int okCount = total - ngCount;
+
+            _lblTotal.Text = $"총 {total}건  |  OK: {okCount}  |  NG: {ngCount}";
+            _lblTotal.ForeColor = ngCount > 0 ? Color.OrangeRed : Color.LightGreen;
+        }
+
+        // ===== 전체 초기화 =====
+        private void ClearAll()
+        {
+            _rows.Clear();
+            _runCount = 0;
+            _imgList.Images.Clear();
+            _listView.SetObjects(_rows);
+            _picPreview.Image = null;
+            _lblBoltNg.Text = "Bolt NG  : -";
+            _lblMarkNg.Text = "Mark NG  : -";
+            _lblTotalNg.Text = "Total NG : -";
+            _lblStatus.Text = "판  정   : -";
+            _lblTotal.Text = "총 0건  |  Bolt NG: 0  |  Mark NG: 0";
+            _lblTotal.ForeColor = Color.White;
+        }
+
+        // ===== 비트맵 리사이즈 헬퍼 =====
+        private static Bitmap ResizeBitmap(Bitmap src, int w, int h)
+        {
+            var bmp = new Bitmap(w, h);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(src, 0, 0, w, h);
+            }
+            return bmp;
+        }
+
+        // ===== 기존 호환 메서드 유지 =====
+        public void AddModelResult(Model curModel) { }
+        public void AddWindowResult(InspWindow w) { }
+        public void AddInspResult(InspResult r) { }
     }
 }

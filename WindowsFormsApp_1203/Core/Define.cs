@@ -14,6 +14,8 @@ namespace JYVision.Core
         InspBoltROI,
         InspFilter,
         InspAIModule,
+        InspMark,
+        InspBolt,
         InspCount
     }
 
