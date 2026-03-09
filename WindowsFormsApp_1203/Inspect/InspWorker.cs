@@ -136,10 +136,15 @@ namespace JYVision.Inspect
             {
                 int maxH = candidateRects.Max(r => r.Height);
                 int minValidHeight = (int)(maxH * 0.5f);
-
                 foreach (var keyRect in candidateRects)
                 {
-                    if (keyRect.Height < minValidHeight) continue; // 너무 작으면 스킵
+                    // ✅ 이미지 경계에 걸친 건반은 높이 필터 면제 (잘린 건반도 정상 포함)
+                    bool isBoundaryClipped = keyRect.X <= 5
+                                          || keyRect.Right >= colorMat.Width - 5
+                                          || keyRect.Y <= 5
+                                          || keyRect.Bottom >= colorMat.Height - 5;
+
+                    if (!isBoundaryClipped && keyRect.Height < minValidHeight) continue;
 
                     _lastMatchedKeyRects.Add(keyRect);
                     displayList.Add(new DrawInspectInfo(keyRect, $"Key H={keyRect.Height}", InspectType.InspNone, DecisionType.Good));
@@ -251,16 +256,13 @@ namespace JYVision.Inspect
         //------- 단일 볼트 존재 검사 -------
         private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos, List<DrawInspectInfo> displayList)
         {
-            // 상/하 위치에 따른 세부 ROI 영역 계산
             float yCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
             Rect boltRoi = new Rect(key.X + (int)(key.Width * 0.2f), key.Y + (int)(key.Height * (yCenter - 0.12f)), (int)(key.Width * 0.6f), (int)(key.Height * 0.24f));
-
             boltRoi = boltRoi.Intersect(new Rect(0, 0, grayMat.Width, grayMat.Height));
             if (boltRoi.Width <= 0 || boltRoi.Height <= 0) return false;
 
             using (Mat roiMat = new Mat(grayMat, boltRoi))
             {
-                // 원형 피처 검출
                 CircleSegment[] circles = Cv2.HoughCircles(roiMat, HoughModes.Gradient, 1.0, roiMat.Width, 50, 18, roiMat.Width / 6, roiMat.Width / 2);
                 bool boltFound = false;
 
@@ -276,8 +278,11 @@ namespace JYVision.Inspect
                         {
                             Cv2.MinMaxLoc(inner, out _, out double innerMax);
                             Cv2.MeanStdDev(inner, out Scalar iMean, out _);
-                            // 금속 반사광(Max)이 주변 평균(Mean)보다 압도적으로 높은지 분석
-                            boltFound = (innerMax / iMean.Val0) > 1.6 && innerMax > 80.0;
+
+                            // ✅ 금속 반사광 조건 강화: 최대값 120↑ + ROI 평균 밝기 45↑ (어두운 구멍 오인식 방지)
+                            boltFound = (innerMax / iMean.Val0) > 1.6
+                                     && innerMax > 120.0
+                                     && iMean.Val0 > 45.0;
                         }
                     }
                 }
