@@ -57,6 +57,9 @@ namespace JYVision.Core
         public InspWorker InspWorker { get => _inspWorker; }
         public Model CurModel { get => _model; }
 
+        // InspWorker에서 결과 저장 시 원본 파일명 참조용
+        public string LastInspectedImagePath => _imageLoader?.LastImagePath ?? "";
+
         public SaigeAI AIModule
         {
             get { if (_saigeAI == null) _saigeAI = new SaigeAI(); return _saigeAI; }
@@ -69,16 +72,13 @@ namespace JYVision.Core
         public List<DrawInspectInfo> RunKeyMatch()
             => _inspWorker.RunKeyMatch();
 
-        // ✅ InspWorker에서 저장 폴더 결정 시 사용하는 마지막 검사 이미지 경로
-        public string LastInspectedImagePath => _imageLoader?.LastImagePath ?? "";
-
         public List<DrawInspectInfo> RunBoltMark()
             => _inspWorker.RunBoltMark();
 
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
             => _inspWorker.RunDisplayWithOptions(showKeyboard, showBolt, showMark);
 
-        //------- Clear 버튼 → 이미지 카운터 초기화 -------
+        // ResultForm Clear 버튼 → 이미지 카운터 초기화
         public void ResetImageLoader()
         {
             _imageLoader?.Reset();
@@ -120,26 +120,18 @@ namespace JYVision.Core
             return true;
         }
 
-        private void LoadSetting()
-        {
-            _camType = SettingXml.Inst.CamType;
-        }
+        private void LoadSetting() { _camType = SettingXml.Inst.CamType; }
 
         public void InitModelGrab(int bufferCount)
         {
             if (_grabManager == null) return;
-
-            int pixelBpp = 8;
-            _grabManager.GetPixelBpp(out pixelBpp);
-
+            int bpp = 8;
+            _grabManager.GetPixelBpp(out bpp);
             int w, h, stride;
             _grabManager.GetResolution(out w, out h, out stride);
-
-            _imageSpace?.SetImageInfo(pixelBpp, w, h, stride);
+            _imageSpace?.SetImageInfo(bpp, w, h, stride);
             SetBuffer(bufferCount);
-
-            eImageChannel ch = (pixelBpp == 24) ? eImageChannel.Color : eImageChannel.Gray;
-            SetImageChannel(ch);
+            SetImageChannel(bpp == 24 ? eImageChannel.Color : eImageChannel.Gray);
         }
 
         //===== [그룹 4] 이미지 버퍼 및 메모리 관리 =====
@@ -149,11 +141,9 @@ namespace JYVision.Core
             try
             {
                 if (!File.Exists(filePath)) return;
-
                 using (Mat matImage = Cv2.ImRead(filePath, ImreadModes.Unchanged))
                 {
                     if (matImage.Empty()) return;
-
                     int alignedWidth = (matImage.Width + 3) / 4 * 4;
                     int bytesPerPixel = (int)matImage.ElemSize();
                     int imageStride = alignedWidth * bytesPerPixel;
@@ -168,10 +158,8 @@ namespace JYVision.Core
                     using (Mat aligned = new Mat(matImage.Height, alignedWidth, matImage.Type(), Scalar.Black))
                     {
                         matImage.CopyTo(aligned[new Rect(0, 0, matImage.Width, matImage.Height)]);
-
                         long bufSize = aligned.Total() * aligned.ElemSize();
                         IntPtr destPtr = ImageSpace.GetnspectionBufferPtr(0);
-
                         if (destPtr != IntPtr.Zero)
                         {
                             byte[] buf = new byte[bufSize];
@@ -192,10 +180,8 @@ namespace JYVision.Core
         public void CheckImageBuffer()
         {
             if (_grabManager == null || SettingXml.Inst.CamType == CameraType.None) return;
-
             int w, h, stride;
             _grabManager.GetResolution(out w, out h, out stride);
-
             if (_imageSpace.ImageSize.Width != w || _imageSpace.ImageSize.Height != h)
             {
                 int bpp = 8;
@@ -208,7 +194,6 @@ namespace JYVision.Core
         public void SetBuffer(int bufferCount)
         {
             _imageSpace.InitImageSpace(bufferCount);
-
             if (_grabManager != null)
             {
                 _grabManager.InitBuffer(bufferCount);
@@ -230,9 +215,7 @@ namespace JYVision.Core
         }
 
         public void UpdateTeachingImage(int index)
-        {
-            if (_selectedInspWindow != null) SetTeachingImage(_selectedInspWindow, index);
-        }
+        { if (_selectedInspWindow != null) SetTeachingImage(_selectedInspWindow, index); }
 
         public void DelTeachingImage(int index)
         {
@@ -249,7 +232,6 @@ namespace JYVision.Core
             if (cf == null) return;
             Mat curImage = cf.GetDisplayImage();
             if (curImage == null) return;
-
             if (inspWindow.WindowArea.Right >= curImage.Width ||
                 inspWindow.WindowArea.Bottom >= curImage.Height)
             { SLogger.Write("ROI 영역이 잘못되었습니다."); return; }
@@ -257,7 +239,6 @@ namespace JYVision.Core
             Mat windowImage = curImage[inspWindow.WindowArea];
             if (index < 0) inspWindow.AddWindowImage(windowImage);
             else inspWindow.SetWindowImage(windowImage, index);
-
             inspWindow.IsPatternLearn = false;
 
             if (inspWindow.FindInspAlgorithm(InspectType.InspMatch) is MatchAlgorithm matchAlgo)
@@ -394,10 +375,7 @@ namespace JYVision.Core
             SLogger.Write($"모델 로딩:{filePath}");
             _model = _model.Load(filePath);
             if (_model == null) { SLogger.Write($"모델 로딩 실패:{filePath}"); return false; }
-
-            if (File.Exists(_model.InspectImagePath))
-                SetImageBuffer(_model.InspectImagePath);
-
+            if (File.Exists(_model.InspectImagePath)) SetImageBuffer(_model.InspectImagePath);
             UpdateDiagramEntity();
             _regKey.SetValue("LastestModelPath", filePath);
             return true;
@@ -436,22 +414,20 @@ namespace JYVision.Core
                 string inspImageDir = Path.GetDirectoryName(inspImagePath);
                 if (!Directory.Exists(inspImageDir)) return;
 
-                // 이미지 목록이 없으면 로드
                 if (!_imageLoader.IsLoadedImages())
                     _imageLoader.LoadImages(inspImageDir);
-
             }
 
             if (isCycle)
             {
-                // 사이클 시작 시 소진됐으면 리셋
+                // 사이클: 소진됐으면 자동 리셋 후 시작
                 if (!UseCamera && _imageLoader.RemainingCount == 0)
                     _imageLoader.Reset();
                 _inspWorker.StartCycleInspectImage();
             }
             else
             {
-                // ✅ 단일 실행: 마지막 이미지 소진 상태면 팝업
+                // 단일: 소진 상태면 팝업
                 if (!UseCamera && _imageLoader.RemainingCount == 0)
                 {
                     DialogResult answer = MessageBox.Show(
@@ -463,14 +439,13 @@ namespace JYVision.Core
                     if (answer == DialogResult.Yes)
                         _imageLoader.Reset();   // 처음부터
                     else
-                        return;                 // 마지막 이미지에서 멈춤
+                        return;                 // 마지막 화면 유지
                 }
                 OneCycle();
             }
         }
 
-        //------- 검사 한 주기 -------
-        // 이미지 소진 시 false 반환 → 사이클 루프 종료
+        // 검사 한 주기 - 소진 시 false 반환
         public bool OneCycle()
         {
             ResetDisplay();
@@ -484,11 +459,10 @@ namespace JYVision.Core
             }
 
             RunInspect();
-            Thread.Sleep(500);
+            Thread.Sleep(200);
             return true;
         }
 
-        //------- 실제 검사 프로세스 -------
         private void RunInspect()
         {
             bool isDefect = false;

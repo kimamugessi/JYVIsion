@@ -13,7 +13,7 @@ namespace JYVision.Core
         private int _currentIndex = 0;
         private int _totalInspected = 0;
 
-        // ✅ 마지막으로 꺼낸 이미지 경로 (저장 시 원본 파일명 사용)
+        // 마지막으로 꺼낸 이미지 경로 (저장 시 원본 파일명 사용)
         public string LastImagePath { get; private set; } = "";
 
         //------- 이미지 목록 로드 -------
@@ -37,6 +37,7 @@ namespace JYVision.Core
         public int RemainingCount => Math.Max(0, _imagePaths.Count - _totalInspected);
 
         //------- 다음 이미지 경로 반환 -------
+        // 소진 시 "" 반환
         public string GetNextImagePath()
         {
             if (_imagePaths.Count == 0) return "";
@@ -45,7 +46,7 @@ namespace JYVision.Core
             string path = _imagePaths[_currentIndex];
             _currentIndex = (_currentIndex + 1) % _imagePaths.Count;
             _totalInspected++;
-            LastImagePath = path;   // ✅ 항상 마지막 꺼낸 경로 기록
+            LastImagePath = path;
 
             SLogger.Write($"이미지 [{_totalInspected}/{_imagePaths.Count}]: {Path.GetFileName(path)}");
             return path;
