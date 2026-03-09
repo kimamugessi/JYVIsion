@@ -123,11 +123,27 @@ namespace JYVision.Inspect
 
             // 2. 찾아낸 대략적인 위치를 바탕으로 실제 색상 영역 정밀 보정
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
+            var candidateRects = new List<Rect>();
+
             foreach (var matched in matchedRects)
             {
                 Rect keyRect = FindActualKeyRect(colorMat, grayMat, matched);
-                _lastMatchedKeyRects.Add(keyRect);
-                displayList.Add(new DrawInspectInfo(keyRect, $"Key H={keyRect.Height}", InspectType.InspNone, DecisionType.Good));
+                candidateRects.Add(keyRect);
+            }
+
+            // ✅ 높이 필터링: 가장 큰 ROI 높이의 50% 미만은 제외 (부분 걸침 오인식 방지)
+            if (candidateRects.Count > 0)
+            {
+                int maxH = candidateRects.Max(r => r.Height);
+                int minValidHeight = (int)(maxH * 0.5f);
+
+                foreach (var keyRect in candidateRects)
+                {
+                    if (keyRect.Height < minValidHeight) continue; // 너무 작으면 스킵
+
+                    _lastMatchedKeyRects.Add(keyRect);
+                    displayList.Add(new DrawInspectInfo(keyRect, $"Key H={keyRect.Height}", InspectType.InspNone, DecisionType.Good));
+                }
             }
 
             cameraForm?.ResetDisplay();
@@ -176,13 +192,13 @@ namespace JYVision.Inspect
             int gap = 0;
 
             // ✅ 위쪽 스캔: matched.Y를 절대 넘지 않음
-            for (int y = centerY; y >= Math.Max(0, matched.Y); y--)
+            int topScanLimit = Math.Max(0, matched.Y - (int)(matched.Height * 0.25f));
+            for (int y = centerY; y >= topScanLimit; y--)
             {
                 bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTolerance)) >= 3;
                 if (match) { topY = y; gap = 0; }
                 else if (++gap > gapLimit) break;
             }
-
             // ✅ 아래쪽 스캔: centerY에서 출발 (topY 아님), matched.Bottom을 넘지 않음
             gap = 0;
             for (int y = centerY; y <= Math.Min(imgH - 1, matched.Bottom); y++)
@@ -192,8 +208,8 @@ namespace JYVision.Inspect
                 else if (++gap > gapLimit) break;
             }
 
-            int margin = Math.Max(15, (int)((bottomY - topY) * 0.05f));
-            int finalTop = Math.Max(0, topY - margin);
+            int margin = Math.Max(10, (int)((bottomY - topY) * 0.05f));
+            int finalTop = Math.Max(0, topY);                        // 마진 제거
             int finalBottom = Math.Min(imgH - 1, bottomY + margin);
 
             return new Rect(matched.X, finalTop, matched.Width, finalBottom - finalTop);
