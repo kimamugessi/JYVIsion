@@ -484,7 +484,7 @@ namespace JYVision.Core
             }
 
             RunInspect();
-            Thread.Sleep(300);
+            Thread.Sleep(500);
             return true;
         }
 
