@@ -69,6 +69,9 @@ namespace JYVision.Core
         public List<DrawInspectInfo> RunKeyMatch()
             => _inspWorker.RunKeyMatch();
 
+        // ✅ InspWorker에서 저장 폴더 결정 시 사용하는 마지막 검사 이미지 경로
+        public string LastInspectedImagePath => _imageLoader?.LastImagePath ?? "";
+
         public List<DrawInspectInfo> RunBoltMark()
             => _inspWorker.RunBoltMark();
 
@@ -437,14 +440,33 @@ namespace JYVision.Core
                 if (!_imageLoader.IsLoadedImages())
                     _imageLoader.LoadImages(inspImageDir);
 
-                // ✅ 이미지 전부 소진된 경우에만 리셋 → 다시 처음부터
-                // 중간에 버튼 누르면 이어서 진행 (소진 판단은 RemainingCount로)
-                if (_imageLoader.RemainingCount == 0)
-                    _imageLoader.Reset();
             }
 
-            if (isCycle) _inspWorker.StartCycleInspectImage();
-            else OneCycle();
+            if (isCycle)
+            {
+                // 사이클 시작 시 소진됐으면 리셋
+                if (!UseCamera && _imageLoader.RemainingCount == 0)
+                    _imageLoader.Reset();
+                _inspWorker.StartCycleInspectImage();
+            }
+            else
+            {
+                // ✅ 단일 실행: 마지막 이미지 소진 상태면 팝업
+                if (!UseCamera && _imageLoader.RemainingCount == 0)
+                {
+                    DialogResult answer = MessageBox.Show(
+                        "마지막 이미지입니다.\n다시 검사하시겠습니까?",
+                        "검사 완료",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (answer == DialogResult.Yes)
+                        _imageLoader.Reset();   // 처음부터
+                    else
+                        return;                 // 마지막 이미지에서 멈춤
+                }
+                OneCycle();
+            }
         }
 
         //------- 검사 한 주기 -------

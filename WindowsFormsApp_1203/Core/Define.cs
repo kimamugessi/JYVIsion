@@ -23,7 +23,7 @@ namespace JYVision.Core
     public enum InspWindowType
     {
         None = 0,
-        Base,
+        XylophoneBar,
     }
 
     public enum DecisionType

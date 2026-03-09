@@ -10,8 +10,11 @@ namespace JYVision.Core
     public class ImageLoader
     {
         private List<string> _imagePaths = new List<string>();
-        private int _currentIndex = 0;   // 다음에 꺼낼 인덱스 (순환)
-        private int _totalInspected = 0;   // 누적 검사 횟수
+        private int _currentIndex = 0;
+        private int _totalInspected = 0;
+
+        // ✅ 마지막으로 꺼낸 이미지 경로 (저장 시 원본 파일명 사용)
+        public string LastImagePath { get; private set; } = "";
 
         //------- 이미지 목록 로드 -------
         public void LoadImages(string dirPath)
@@ -25,6 +28,7 @@ namespace JYVision.Core
 
             _currentIndex = 0;
             _totalInspected = 0;
+            LastImagePath = "";
             SLogger.Write($"이미지 {_imagePaths.Count}장 로드 완료");
         }
 
@@ -33,8 +37,6 @@ namespace JYVision.Core
         public int RemainingCount => Math.Max(0, _imagePaths.Count - _totalInspected);
 
         //------- 다음 이미지 경로 반환 -------
-        // 누적 횟수 == 전체 이미지 수 이면 "" 반환(소진)
-        // 인덱스는 순환 → 단일/사이클 혼합 사용 가능
         public string GetNextImagePath()
         {
             if (_imagePaths.Count == 0) return "";
@@ -43,16 +45,18 @@ namespace JYVision.Core
             string path = _imagePaths[_currentIndex];
             _currentIndex = (_currentIndex + 1) % _imagePaths.Count;
             _totalInspected++;
+            LastImagePath = path;   // ✅ 항상 마지막 꺼낸 경로 기록
 
             SLogger.Write($"이미지 [{_totalInspected}/{_imagePaths.Count}]: {Path.GetFileName(path)}");
             return path;
         }
 
-        //------- 카운터 초기화 (처음부터 재검사) -------
+        //------- 카운터 초기화 -------
         public void Reset()
         {
             _currentIndex = 0;
             _totalInspected = 0;
+            LastImagePath = "";
             SLogger.Write("ImageLoader 리셋");
         }
     }

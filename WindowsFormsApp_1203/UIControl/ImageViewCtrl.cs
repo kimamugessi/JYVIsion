@@ -144,7 +144,7 @@ namespace JYVision.UIControl
 
             switch (inspWindowType)
             {
-                case InspWindowType.Base:
+                case InspWindowType.XylophoneBar:
                     color = Color.LightBlue;
                     break;
             }

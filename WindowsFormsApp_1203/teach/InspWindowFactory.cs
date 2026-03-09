@@ -56,7 +56,7 @@ namespace JYVision.Teach
         {
             switch (inspWindow.InspWindowType)
             {
-                case InspWindowType.Base:
+                case InspWindowType.XylophoneBar:
                     inspWindow.AddInspAlgorithm(InspectType.InspMatch);
                     break;
             }
@@ -70,9 +70,9 @@ namespace JYVision.Teach
             prefix = string.Empty;
             switch (windowType)
             {
-                case InspWindowType.Base:
-                    name = "Base";
-                    prefix = "BAS";
+                case InspWindowType.XylophoneBar:
+                    name = "XylophoneBar";
+                    prefix = "Bar";
                     break;
                
                 default:
