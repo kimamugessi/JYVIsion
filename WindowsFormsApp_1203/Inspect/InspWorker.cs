@@ -28,7 +28,6 @@ namespace JYVision.Inspect
 
         //===== [그룹 1] 엔진 및 루프 제어 =====
 
-        //------- 검사 루프 시작 -------
         public void StartCycleInspectImage()
         {
             _cts?.Cancel();
@@ -36,10 +35,8 @@ namespace JYVision.Inspect
             Task.Run(() => InspectionLoop(this, _cts.Token));
         }
 
-        //------- 루프 중지 -------
         public void Stop() => _cts.Cancel();
 
-        //------- 내부 검사 스레드 루프 -------
         private void InspectionLoop(InspWorker inspWorker, CancellationToken token)
         {
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
@@ -47,18 +44,18 @@ namespace JYVision.Inspect
             while (!token.IsCancellationRequested)
             {
                 Global.Inst.InspStage.OneCycle();
+                
             }
             IsRunning = false;
         }
 
         //===== [그룹 2] 검사 실행 메인 흐름 =====
 
-        //------- 전체 양산 검사 실행 -------
-        public bool RunInspect(out bool isDefect)
+        // ✅ 잔상 방지: 화면 그리기 제거, 결과 리스트만 반환
+        public List<DrawInspectInfo> RunInspect(out bool isDefect)
         {
             isDefect = false;
             Model curMode = Global.Inst.InspStage.CurModel;
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> finalDisplayList = new List<DrawInspectInfo>();
 
             foreach (var window in curMode.InspWindowList)
@@ -72,18 +69,16 @@ namespace JYVision.Inspect
                 }
             }
 
-            if (cameraForm != null)
-            {
-                cameraForm.ResetDisplay();
-                if (finalDisplayList.Count > 0) cameraForm.AddRect(finalDisplayList);
-            }
-            return true;
+            return finalDisplayList;
         }
 
-        //------- 개별 윈도우/알고리즘 검사 시도 -------
         public bool TryInspect(InspWindow inspObj, InspectType inspType)
         {
-            if (inspObj == null) return RunInspect(out _);
+            if (inspObj == null)
+            {
+                RunInspect(out _);
+                return true;
+            }
             if (!UpdateInspData(inspObj)) return false;
             _inspectBoard.Inspect(inspObj);
             return DisplayResult(inspObj, inspType);
@@ -91,16 +86,15 @@ namespace JYVision.Inspect
 
         //===== [그룹 3] 건반 위치 탐색 및 보정 =====
 
-        //------- 건반 템플릿 매칭 실행 -------
-        public void RunKeyMatch()
+        // ✅ 잔상 방지: 화면 그리기 제거, 결과 리스트만 반환
+        public List<DrawInspectInfo> RunKeyMatch()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
 
             _lastMatchedKeyRects.Clear();
             Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
-            if (colorMat == null || colorMat.Empty()) return;
+            if (colorMat == null || colorMat.Empty()) return displayList;
 
             var matchedRects = new List<Rect>();
             foreach (var window in curMode.InspWindowList)
@@ -141,11 +135,9 @@ namespace JYVision.Inspect
                 }
             }
 
-            cameraForm?.ResetDisplay();
-            if (displayList.Count > 0) cameraForm?.AddRect(displayList);
+            return displayList;
         }
 
-        //------- 색상 기반 건반 영역 정밀 추출 -------
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
             int imgH = colorMat.Height;
@@ -208,7 +200,6 @@ namespace JYVision.Inspect
             return new Rect(matched.X, finalTop, matched.Width, finalBottom - finalTop);
         }
 
-        //------- 픽셀 색상 일치 여부 확인 -------
         private bool IsColorMatch(Vec3b px, Vec3b refColor, int tolerance) =>
             Math.Abs(px.Item0 - refColor.Item0) <= tolerance &&
             Math.Abs(px.Item1 - refColor.Item1) <= tolerance &&
@@ -216,17 +207,15 @@ namespace JYVision.Inspect
 
         //===== [그룹 4] 세부 부품(볼트/각인) 검사 =====
 
-        //------- 볼트 및 각인 전체 검사 수행 -------
-        public void RunBoltMark()
+        // ✅ 잔상 방지: 화면 그리기 제거, 결과 리스트만 반환
+        public List<DrawInspectInfo> RunBoltMark()
         {
-            if (_lastMatchedKeyRects.Count == 0) return;
-
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
-            Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
-            if (grayMat == null || grayMat.Empty()) return;
+            if (_lastMatchedKeyRects.Count == 0) return displayList;
 
-            // ✅ 매 검사마다 초기화
+            Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
+            if (grayMat == null || grayMat.Empty()) return displayList;
+
             _boltNgCount = 0;
             _markNgCount = 0;
 
@@ -234,22 +223,18 @@ namespace JYVision.Inspect
             {
                 displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
 
-                // ✅ 반환값으로 직접 집계
                 if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) _boltNgCount++;
                 if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) _boltNgCount++;
                 if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
             }
 
-            // ✅ 컬러 이미지 캡처 후 ResultForm 전달
             SendResultToForm(_boltNgCount, _markNgCount);
 
-            cameraForm?.ResetDisplay();
-            cameraForm?.AddRect(displayList);
+            return displayList;
         }
 
         private enum BoltPosition { Top, Bottom }
 
-        //------- 단일 볼트 존재 검사 -------
         private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos, List<DrawInspectInfo> displayList)
         {
             float yCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
@@ -300,7 +285,6 @@ namespace JYVision.Inspect
             }
         }
 
-        //------- 중앙 각인 유무 검사 -------
         private bool CheckMark(Mat grayMat, Rect key, List<DrawInspectInfo> displayList)
         {
             Rect markRoi = new Rect(
@@ -331,7 +315,6 @@ namespace JYVision.Inspect
 
         //===== [그룹 5] 데이터 동기화 및 출력 제어 =====
 
-        //------- 옵션에 따른 결과 화면 표시 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
             if (_lastMatchedKeyRects.Count == 0) return;
@@ -341,7 +324,6 @@ namespace JYVision.Inspect
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
             if (grayMat == null) return;
 
-            // ✅ 매 검사마다 초기화
             _boltNgCount = 0;
             _markNgCount = 0;
 
@@ -352,7 +334,6 @@ namespace JYVision.Inspect
 
                 if (showBolt)
                 {
-                    // ✅ 반환값으로 직접 집계
                     if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) _boltNgCount++;
                     if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) _boltNgCount++;
                 }
@@ -363,14 +344,13 @@ namespace JYVision.Inspect
                 }
             }
 
-            // ✅ 컬러 이미지 캡처 후 ResultForm 전달
-            SendResultToForm(_boltNgCount, _markNgCount);
+            // ✅ 결과창 중복 누적 방지: 화면 옵션만 변경할 때는 결과를 다시 보내지 않습니다.
+            // SendResultToForm(_boltNgCount, _markNgCount); 
 
             cameraForm?.ResetDisplay();
             if (displayList.Count > 0) cameraForm?.AddRect(displayList);
         }
 
-        //------- ResultForm에 결과 + 이미지 전달 (공통) -------
         private void SendResultToForm(int boltNg, int markNg)
         {
             var resultForm = MainForm.GetDockForm<ResultForm>();
@@ -382,7 +362,6 @@ namespace JYVision.Inspect
                 Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
                 if (colorMat != null && !colorMat.Empty())
                 {
-                    // ✅ 채널 수에 관계없이 안전하게 BGR 변환
                     Mat bgr = new Mat();
                     if (colorMat.Channels() == 1)
                         Cv2.CvtColor(colorMat, bgr, ColorConversionCodes.GRAY2BGR);
@@ -393,12 +372,11 @@ namespace JYVision.Inspect
                     bgr.Dispose();
                 }
             }
-            catch { /* 이미지 캡처 실패 시 null로 전달 */ }
+            catch { }
 
             resultForm.UpdateNgSummary(boltNg, markNg, captured);
         }
 
-        //------- 알고리즘별 입력 데이터(이미지/ROI) 갱신 -------
         public bool UpdateInspData(InspWindow inspWindow)
         {
             if (inspWindow == null) return false;
@@ -411,7 +389,6 @@ namespace JYVision.Inspect
             return true;
         }
 
-        //------- 검사 결과 사각형 화면 출력 -------
         private bool DisplayResult(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) return false;

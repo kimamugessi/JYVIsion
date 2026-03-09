@@ -1,23 +1,24 @@
-﻿using System;
+﻿using JYVision.Algorithm;
+using JYVision.Core;
+using JYVision.Grab;
+using JYVision.Inspect;
+using JYVision.SaigeSDK;
+using JYVision.Sequence;
+using JYVision.Setting;
+using JYVision.Teach;
+using JYVision.Util;
+using Microsoft.Win32;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.Win32;
-using JYVision.Algorithm;
-using JYVision.Grab;
-using JYVision.Inspect;
-using JYVision.SaigeSDK;
-using JYVision.Setting;
-using JYVision.Teach;
-using JYVision.Util;
-using JYVision.Core;
-using OpenCvSharp;
-using OpenCvSharp.Extensions;
-using JYVision.Sequence;
 
 namespace JYVision.Core
 {
@@ -69,17 +70,16 @@ namespace JYVision.Core
         //===== [그룹 2] 외부 호출 진입점 =====
 
         //------- 건반 위치 감지 (세로 길이 자동 보정) -------
-        public void RunKeyMatch()
+        public List<DrawInspectInfo> RunKeyMatch()
         {
-            _inspWorker.RunKeyMatch();
+            return _inspWorker.RunKeyMatch();
         }
 
         //------- 건반 기준 볼트, 각인 검사 실행 -------
-        public void RunBoltMark()
+        public List<DrawInspectInfo> RunBoltMark()
         {
-            _inspWorker.RunBoltMark();
+            return _inspWorker.RunBoltMark();
         }
-
         //------- 옵션 기반 디스플레이 제어 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
@@ -570,21 +570,40 @@ namespace JYVision.Core
         //------- 검사 한 주기 실행 -------
         public void OneCycle()
         {
+            // 1. 이미지 교체 전 화면만 클리어
+            ResetDisplay();
+
+            // 2. 이미지 로드
             bool grabSuccess = UseCamera ? Grab(0) : VirtualGrab();
-            if (grabSuccess) RunInspect();
+            if (!grabSuccess) return;  // ✅ Sleep 낭비 제거
+
+            // 3. 검사 즉시 실행 → 결과 화면에 표시
+            RunInspect();
+
+            // 4. 결과를 충분히 볼 수 있도록 대기
+            Thread.Sleep(300);
         }
 
         //------- 실제 검사 프로세스 실행 -------
         private void RunInspect()
         {
-            ResetDisplay();
+            // ✅ KeyMatch / BoltMark 병렬 실행 (단, KeyMatch 결과가 BoltMark 입력이므로 순서 유지)
             bool isDefect = false;
             _inspWorker.RunInspect(out isDefect);
 
-            // 전역 인스턴스 통한 특수 로직 호출
-            var stage = Global.Inst.InspStage;
-            stage.RunKeyMatch();
-            stage.RunBoltMark();
+            var keyResults = RunKeyMatch();       // _lastMatchedKeyRects 채움
+            var boltResults = RunBoltMark();       // 위 결과 사용
+
+            var totalList = new List<DrawInspectInfo>(keyResults.Count + boltResults.Count);
+            totalList.AddRange(keyResults);
+            totalList.AddRange(boltResults);
+
+            var cameraForm = MainForm.GetDockForm<CameraForm>();
+            if (cameraForm != null && totalList.Count > 0)
+            {
+                cameraForm.ResetDisplay();
+                cameraForm.AddRect(totalList);
+            }
         }
 
         //------- 사이클 중지 -------
@@ -606,7 +625,7 @@ namespace JYVision.Core
 
             SetImageBuffer(imagePath);
             _imageSpace.Split(0);
-            DisplayGrabImage(0);
+            //DisplayGrabImage(0);
             return true;
         }
 

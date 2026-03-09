@@ -69,7 +69,7 @@ namespace JYVision
 
             _btnClear = new Button
             {
-                Text = "초기화",
+                Text = "Clear",
                 Width = 70,
                 Height = 26,
                 Location = new Point(6, 5),
@@ -99,7 +99,7 @@ namespace JYVision
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                Panel1MinSize = 80,  // ✅ 작게 설정 (SplitterDistance 에러 방지)
+                Panel1MinSize = 83,  // ✅ 작게 설정 (SplitterDistance 에러 방지)
                 Panel2MinSize = 50
             };
 
