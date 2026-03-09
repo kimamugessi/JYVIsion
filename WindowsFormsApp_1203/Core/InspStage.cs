@@ -26,7 +26,7 @@ namespace JYVision.Core
     //===== 시각 검사 스테이지 통합 관리 클래스 =====
     public class InspStage : IDisposable
     {
-        //===== [그룹 1] 필드 및 속성 설정 =====
+        //===== [그룹 1] 필드 및 속성 =====
         public static readonly int MAX_GRAB_BUF = 1;
 
         private ImageSpace _imageSpace = null;
@@ -59,42 +59,34 @@ namespace JYVision.Core
 
         public SaigeAI AIModule
         {
-            get
-            {
-                if (_saigeAI == null) _saigeAI = new SaigeAI();
-                return _saigeAI;
-            }
+            get { if (_saigeAI == null) _saigeAI = new SaigeAI(); return _saigeAI; }
         }
 
         public InspStage() { }
 
         //===== [그룹 2] 외부 호출 진입점 =====
 
-        //------- 건반 위치 감지 (세로 길이 자동 보정) -------
         public List<DrawInspectInfo> RunKeyMatch()
-        {
-            return _inspWorker.RunKeyMatch();
-        }
+            => _inspWorker.RunKeyMatch();
 
-        //------- 건반 기준 볼트, 각인 검사 실행 -------
         public List<DrawInspectInfo> RunBoltMark()
-        {
-            return _inspWorker.RunBoltMark();
-        }
+            => _inspWorker.RunBoltMark();
 
-        //------- 옵션 기반 디스플레이 제어 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
+            => _inspWorker.RunDisplayWithOptions(showKeyboard, showBolt, showMark);
+
+        //------- Clear 버튼 → 이미지 카운터 초기화 -------
+        public void ResetImageLoader()
         {
-            _inspWorker.RunDisplayWithOptions(showKeyboard, showBolt, showMark);
+            _imageLoader?.Reset();
+            SLogger.Write("이미지 카운터 초기화 (ResultForm Clear)");
         }
 
         //===== [그룹 3] 초기화 및 설정 =====
 
-        //------- 스테이지 초기화 -------
         public bool Initialize()
         {
             LoadSetting();
-
             SLogger.Write("InspStage 초기화!");
             _imageSpace = new ImageSpace();
             _previewImage = new PreviewImage();
@@ -102,7 +94,6 @@ namespace JYVision.Core
             _imageLoader = new ImageLoader();
             _regKey = Registry.CurrentUser.CreateSubKey("Software\\JYVision");
             _model = new Model();
-
             LoadSetting();
 
             switch (_camType)
@@ -111,7 +102,7 @@ namespace JYVision.Core
                 case CameraType.HikRobotCam: { _grabManager = new HikRobotCam(); break; }
             }
 
-            if (_grabManager != null && _grabManager.InitGrab() == true)
+            if (_grabManager != null && _grabManager.InitGrab())
             {
                 _grabManager.TransferCompleted += _multiGrab_TransferCompleted;
                 InitModelGrab(MAX_GRAB_BUF);
@@ -126,13 +117,11 @@ namespace JYVision.Core
             return true;
         }
 
-        //------- 설정 파일 로드 -------
         private void LoadSetting()
         {
             _camType = SettingXml.Inst.CamType;
         }
 
-        //------- 카메라 해상도 및 버퍼 초기화 -------
         public void InitModelGrab(int bufferCount)
         {
             if (_grabManager == null) return;
@@ -140,21 +129,18 @@ namespace JYVision.Core
             int pixelBpp = 8;
             _grabManager.GetPixelBpp(out pixelBpp);
 
-            int inspectionWidth, inspectionHeight, inspectionStride;
-            _grabManager.GetResolution(out inspectionWidth, out inspectionHeight, out inspectionStride);
+            int w, h, stride;
+            _grabManager.GetResolution(out w, out h, out stride);
 
-            if (_imageSpace != null)
-                _imageSpace.SetImageInfo(pixelBpp, inspectionWidth, inspectionHeight, inspectionStride);
-
+            _imageSpace?.SetImageInfo(pixelBpp, w, h, stride);
             SetBuffer(bufferCount);
 
-            eImageChannel imageChannel = (pixelBpp == 24) ? eImageChannel.Color : eImageChannel.Gray;
-            SetImageChannel(imageChannel);
+            eImageChannel ch = (pixelBpp == 24) ? eImageChannel.Color : eImageChannel.Gray;
+            SetImageChannel(ch);
         }
 
         //===== [그룹 4] 이미지 버퍼 및 메모리 관리 =====
 
-        //------- 파일로부터 이미지 버퍼 설정 -------
         public void SetImageBuffer(string filePath)
         {
             try
@@ -176,18 +162,18 @@ namespace JYVision.Core
                         SetBuffer(_imageSpace.BufferCount);
                     }
 
-                    using (Mat alignedMat = new Mat(matImage.Height, alignedWidth, matImage.Type(), Scalar.Black))
+                    using (Mat aligned = new Mat(matImage.Height, alignedWidth, matImage.Type(), Scalar.Black))
                     {
-                        matImage.CopyTo(alignedMat[new Rect(0, 0, matImage.Width, matImage.Height)]);
+                        matImage.CopyTo(aligned[new Rect(0, 0, matImage.Width, matImage.Height)]);
 
-                        long bufSize = alignedMat.Total() * alignedMat.ElemSize();
+                        long bufSize = aligned.Total() * aligned.ElemSize();
                         IntPtr destPtr = ImageSpace.GetnspectionBufferPtr(0);
 
                         if (destPtr != IntPtr.Zero)
                         {
-                            byte[] managedBuf = new byte[bufSize];
-                            Marshal.Copy(alignedMat.Data, managedBuf, 0, (int)bufSize);
-                            Marshal.Copy(managedBuf, 0, destPtr, (int)bufSize);
+                            byte[] buf = new byte[bufSize];
+                            Marshal.Copy(aligned.Data, buf, 0, (int)bufSize);
+                            Marshal.Copy(buf, 0, destPtr, (int)bufSize);
                         }
                     }
                 }
@@ -200,25 +186,22 @@ namespace JYVision.Core
             }
         }
 
-        //------- 이미지 버퍼 상태 체크 및 갱신 -------
         public void CheckImageBuffer()
         {
             if (_grabManager == null || SettingXml.Inst.CamType == CameraType.None) return;
 
-            int imageWidth, imageHeight, imageStride;
-            _grabManager.GetResolution(out imageWidth, out imageHeight, out imageStride);
+            int w, h, stride;
+            _grabManager.GetResolution(out w, out h, out stride);
 
-            if (_imageSpace.ImageSize.Width != imageWidth ||
-                _imageSpace.ImageSize.Height != imageHeight)
+            if (_imageSpace.ImageSize.Width != w || _imageSpace.ImageSize.Height != h)
             {
-                int pixelBpp = 8;
-                _grabManager.GetPixelBpp(out pixelBpp);
-                _imageSpace.SetImageInfo(pixelBpp, imageWidth, imageHeight, imageStride);
+                int bpp = 8;
+                _grabManager.GetPixelBpp(out bpp);
+                _imageSpace.SetImageInfo(bpp, w, h, stride);
                 SetBuffer(_imageSpace.BufferCount);
             }
         }
 
-        //------- 메모리 버퍼 초기화 및 하드웨어 연동 -------
         public void SetBuffer(int bufferCount)
         {
             _imageSpace.InitImageSpace(bufferCount);
@@ -227,68 +210,54 @@ namespace JYVision.Core
             {
                 _grabManager.InitBuffer(bufferCount);
                 for (int i = 0; i < bufferCount; i++)
-                {
                     _grabManager.SetBuffer(
                         _imageSpace.GetInspectionBuffer(i),
                         _imageSpace.GetnspectionBufferPtr(i),
-                        _imageSpace.GetInspectionBufferHandle(i),
-                        i);
-                }
+                        _imageSpace.GetInspectionBufferHandle(i), i);
             }
             SLogger.Write("버퍼 초기화 성공");
         }
 
         //===== [그룹 5] 티칭 및 ROI 윈도우 관리 =====
 
-        private void UpdateProperty(InspWindow inspWindow)
+        private void UpdateProperty(InspWindow w)
         {
-            if (inspWindow == null) return;
-            PropertiesForm propertiesForm = MainForm.GetDockForm<PropertiesForm>();
-            if (propertiesForm == null) return;
-            propertiesForm.UpdateProperty(inspWindow);
+            if (w == null) return;
+            MainForm.GetDockForm<PropertiesForm>()?.UpdateProperty(w);
         }
 
         public void UpdateTeachingImage(int index)
         {
-            if (_selectedInspWindow == null) return;
-            SetTeachingImage(_selectedInspWindow, index);
+            if (_selectedInspWindow != null) SetTeachingImage(_selectedInspWindow, index);
         }
 
         public void DelTeachingImage(int index)
         {
             if (_selectedInspWindow == null) return;
             _selectedInspWindow.DelWindowImage(index);
-            MatchAlgorithm matchAlgo = (MatchAlgorithm)_selectedInspWindow.FindInspAlgorithm(InspectType.InspMatch);
-            if (matchAlgo != null)
+            if (_selectedInspWindow.FindInspAlgorithm(InspectType.InspMatch) is MatchAlgorithm)
                 UpdateProperty(_selectedInspWindow);
         }
 
         public void SetTeachingImage(InspWindow inspWindow, int index = -1)
         {
             if (inspWindow == null) return;
-
-            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
-            if (cameraForm == null) return;
-
-            Mat curImage = cameraForm.GetDisplayImage();
+            CameraForm cf = MainForm.GetDockForm<CameraForm>();
+            if (cf == null) return;
+            Mat curImage = cf.GetDisplayImage();
             if (curImage == null) return;
 
             if (inspWindow.WindowArea.Right >= curImage.Width ||
                 inspWindow.WindowArea.Bottom >= curImage.Height)
-            {
-                SLogger.Write("ROI 영역이 잘못되었습니다.");
-                return;
-            }
+            { SLogger.Write("ROI 영역이 잘못되었습니다."); return; }
 
             Mat windowImage = curImage[inspWindow.WindowArea];
-
             if (index < 0) inspWindow.AddWindowImage(windowImage);
             else inspWindow.SetWindowImage(windowImage, index);
 
             inspWindow.IsPatternLearn = false;
 
-            MatchAlgorithm matchAlgo = (MatchAlgorithm)inspWindow.FindInspAlgorithm(InspectType.InspMatch);
-            if (matchAlgo != null)
+            if (inspWindow.FindInspAlgorithm(InspectType.InspMatch) is MatchAlgorithm matchAlgo)
             {
                 matchAlgo.ImageChannel = SelImageChannel;
                 if (matchAlgo.ImageChannel == eImageChannel.Color)
@@ -297,89 +266,49 @@ namespace JYVision.Core
             }
         }
 
-        public void TryInspection(InspWindow inspWindow)
-        {
-            UpdateDiagramEntity();
-            InspWorker.TryInspect(inspWindow, InspectType.InspNone);
-        }
+        public void TryInspection(InspWindow w) { UpdateDiagramEntity(); InspWorker.TryInspect(w, InspectType.InspNone); }
 
         public void SelectInspWindow(InspWindow inspWindow)
         {
             _selectedInspWindow = inspWindow;
-
             var propForm = MainForm.GetDockForm<PropertiesForm>();
             if (propForm != null)
             {
-                if (inspWindow is null) { propForm.ResetProperty(); return; }
+                if (inspWindow == null) { propForm.ResetProperty(); return; }
                 propForm.ShowProperty(inspWindow);
             }
-
             UpdateProperty(inspWindow);
             Global.Inst.InspStage.PreView.SetInspWindow(inspWindow);
         }
 
         public void AddInspWindow(InspWindowType windowType, Rect rect)
         {
-            InspWindow inspWindow = _model.AddInspWindow(windowType);
-            if (inspWindow is null) return;
-
-            inspWindow.WindowArea = rect;
-            inspWindow.IsTeach = false;
-            SetTeachingImage(inspWindow);
-            UpdateProperty(inspWindow);
-            UpdateDiagramEntity();
-
-            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
-            if (cameraForm != null)
-            {
-                cameraForm.SelectDiagramEntity(inspWindow);
-                SelectInspWindow(inspWindow);
-            }
+            InspWindow w = _model.AddInspWindow(windowType);
+            if (w == null) return;
+            w.WindowArea = rect; w.IsTeach = false;
+            SetTeachingImage(w); UpdateProperty(w); UpdateDiagramEntity();
+            CameraForm cf = MainForm.GetDockForm<CameraForm>();
+            if (cf != null) { cf.SelectDiagramEntity(w); SelectInspWindow(w); }
         }
 
-        public bool AddInspWindow(InspWindow sourceWindow, OpenCvSharp.Point offset)
+        public bool AddInspWindow(InspWindow src, OpenCvSharp.Point offset)
         {
-            InspWindow cloneWindow = sourceWindow.Clone(offset);
-            if (cloneWindow is null || !_model.AddInspWindow(cloneWindow)) return false;
-
-            UpdateProperty(cloneWindow);
-            UpdateDiagramEntity();
-
-            CameraForm cameraForm = MainForm.GetDockForm<CameraForm>();
-            if (cameraForm != null)
-            {
-                cameraForm.SelectDiagramEntity(cloneWindow);
-                SelectInspWindow(cloneWindow);
-            }
+            InspWindow clone = src.Clone(offset);
+            if (clone == null || !_model.AddInspWindow(clone)) return false;
+            UpdateProperty(clone); UpdateDiagramEntity();
+            CameraForm cf = MainForm.GetDockForm<CameraForm>();
+            if (cf != null) { cf.SelectDiagramEntity(clone); SelectInspWindow(clone); }
             return true;
         }
 
-        public void MoveInspWindow(InspWindow inspWindow, OpenCvSharp.Point offset)
-        {
-            if (inspWindow == null) return;
-            inspWindow.OffsetMove(offset);
-            UpdateProperty(inspWindow);
-        }
+        public void MoveInspWindow(InspWindow w, OpenCvSharp.Point offset)
+        { if (w != null) { w.OffsetMove(offset); UpdateProperty(w); } }
 
-        public void ModifyInspWindow(InspWindow inspWindow, Rect rect)
-        {
-            if (inspWindow == null) return;
-            inspWindow.WindowArea = rect;
-            inspWindow.IsTeach = false;
-            UpdateProperty(inspWindow);
-        }
+        public void ModifyInspWindow(InspWindow w, Rect rect)
+        { if (w != null) { w.WindowArea = rect; w.IsTeach = false; UpdateProperty(w); } }
 
-        public void DelInspWindow(InspWindow inspWindow)
-        {
-            _model.DelInspWindow(inspWindow);
-            UpdateDiagramEntity();
-        }
-
-        public void DelInspWindow(List<InspWindow> inspWindowList)
-        {
-            _model.DelInspWindowList(inspWindowList);
-            UpdateDiagramEntity();
-        }
+        public void DelInspWindow(InspWindow w) { _model.DelInspWindow(w); UpdateDiagramEntity(); }
+        public void DelInspWindow(List<InspWindow> list) { _model.DelInspWindowList(list); UpdateDiagramEntity(); }
 
         //===== [그룹 6] 카메라 제어 및 그랩 =====
 
@@ -393,17 +322,13 @@ namespace JYVision.Core
         {
             int bufferIndex = (int)e;
             SLogger.Write($"TransferCompleted {bufferIndex}");
-
             _imageSpace.Split(bufferIndex);
 
             if (SaveCamImage && Directory.Exists(_capturePath))
             {
-                Mat curImage = GetMat(0, eImageChannel.Color);
-                if (curImage != null)
-                {
-                    string savePath = Path.Combine(_capturePath, $"{++SaveImageIndex:D4}.png");
-                    curImage.SaveImage(savePath);
-                }
+                Mat img = GetMat(0, eImageChannel.Color);
+                if (img != null)
+                    img.SaveImage(Path.Combine(_capturePath, $"{++SaveImageIndex:D4}.png"));
             }
 
             DisplayGrabImage(bufferIndex);
@@ -415,34 +340,26 @@ namespace JYVision.Core
                 _grabManager.Grab(bufferIndex, true);
             }
 
-            if (_isInspectMode)
-                RunInspect();
+            if (_isInspectMode) RunInspect();
         }
 
         //===== [그룹 7] 디스플레이 및 화면 갱신 =====
 
         private void DisplayGrabImage(int bufferIndex)
-        {
-            MainForm.GetDockForm<CameraForm>()?.UpdateDisplay();
-        }
+            => MainForm.GetDockForm<CameraForm>()?.UpdateDisplay();
 
         public void UpdateDisplay(Bitmap bitmap)
-        {
-            MainForm.GetDockForm<CameraForm>()?.UpdateDisplay(bitmap);
-        }
+            => MainForm.GetDockForm<CameraForm>()?.UpdateDisplay(bitmap);
 
         public void SetPreviewImage(eImageChannel channel)
         {
             if (_previewImage == null) return;
-            Bitmap bitmap = ImageSpace.GetBitmap(0, channel);
-            _previewImage.SetImage(BitmapConverter.ToMat(bitmap));
+            _previewImage.SetImage(BitmapConverter.ToMat(ImageSpace.GetBitmap(0, channel)));
             SetImageChannel(channel);
         }
 
         public void SetImageChannel(eImageChannel channel)
-        {
-            MainForm.GetDockForm<CameraForm>()?.SetImageChannel(channel);
-        }
+            => MainForm.GetDockForm<CameraForm>()?.SetImageChannel(channel);
 
         public Bitmap GetBitmap(int bufferIndex = -1, eImageChannel imageChannel = eImageChannel.None)
         {
@@ -464,15 +381,8 @@ namespace JYVision.Core
             MainForm.GetDockForm<ModelTreeForm>()?.UpdateDiagramEntity();
         }
 
-        public void RedrawMainView()
-        {
-            MainForm.GetDockForm<CameraForm>()?.UpdateImageViewer();
-        }
-
-        public void ResetDisplay()
-        {
-            MainForm.GetDockForm<CameraForm>()?.ResetDisplay();
-        }
+        public void RedrawMainView() => MainForm.GetDockForm<CameraForm>()?.UpdateImageViewer();
+        public void ResetDisplay() => MainForm.GetDockForm<CameraForm>()?.ResetDisplay();
 
         //===== [그룹 8] 모델 데이터 관리 =====
 
@@ -480,16 +390,10 @@ namespace JYVision.Core
         {
             SLogger.Write($"모델 로딩:{filePath}");
             _model = _model.Load(filePath);
+            if (_model == null) { SLogger.Write($"모델 로딩 실패:{filePath}"); return false; }
 
-            if (_model == null)
-            {
-                SLogger.Write($"모델 로딩 실패:{filePath}");
-                return false;
-            }
-
-            string inspImagePath = _model.InspectImagePath;
-            if (File.Exists(inspImagePath))
-                SetImageBuffer(inspImagePath);
+            if (File.Exists(_model.InspectImagePath))
+                SetImageBuffer(_model.InspectImagePath);
 
             UpdateDiagramEntity();
             _regKey.SetValue("LastestModelPath", filePath);
@@ -499,25 +403,20 @@ namespace JYVision.Core
         public void SaveModel(string filePath)
         {
             SLogger.Write($"모델 저장:{filePath}");
-            if (string.IsNullOrEmpty(filePath))
-                CurModel.Save();
-            else
-                CurModel.SaveAs(filePath);
+            if (string.IsNullOrEmpty(filePath)) CurModel.Save();
+            else CurModel.SaveAs(filePath);
         }
 
         private bool LastestModelOpen()
         {
             if (_lastestModelOpen) return true;
             _lastestModelOpen = true;
-
-            string lastestModel = (string)_regKey.GetValue("LastestModelPath");
-            if (!File.Exists(lastestModel)) return true;
-
-            DialogResult result = MessageBox.Show(
-                $"최근 모델을 불러오시겠습니까?\r\n[{lastestModel}] ",
+            string path = (string)_regKey.GetValue("LastestModelPath");
+            if (!File.Exists(path)) return true;
+            DialogResult r = MessageBox.Show(
+                $"최근 모델을 불러오시겠습니까?\r\n[{path}] ",
                 "최근 모델 불러오기", MessageBoxButtons.YesNo);
-
-            return result == DialogResult.No ? true : LoadModel(lastestModel);
+            return r == DialogResult.No ? true : LoadModel(path);
         }
 
         //===== [그룹 9] 검사 사이클 및 시퀀스 처리 =====
@@ -532,95 +431,88 @@ namespace JYVision.Core
                 if (inspImagePath == "") return;
 
                 string inspImageDir = Path.GetDirectoryName(inspImagePath);
-                if (Directory.Exists(inspImageDir))
-                {
-                    if (!_imageLoader.IsLoadedImages())
-                        _imageLoader.LoadImages(inspImageDir);
-                }
+                if (!Directory.Exists(inspImageDir)) return;
+
+                // 이미지 목록이 없으면 로드
+                if (!_imageLoader.IsLoadedImages())
+                    _imageLoader.LoadImages(inspImageDir);
+
+                // ✅ 이미지 전부 소진된 경우에만 리셋 → 다시 처음부터
+                // 중간에 버튼 누르면 이어서 진행 (소진 판단은 RemainingCount로)
+                if (_imageLoader.RemainingCount == 0)
+                    _imageLoader.Reset();
             }
 
             if (isCycle) _inspWorker.StartCycleInspectImage();
             else OneCycle();
         }
 
-        //------- 검사 한 주기 실행 -------
-        public void OneCycle()
+        //------- 검사 한 주기 -------
+        // 이미지 소진 시 false 반환 → 사이클 루프 종료
+        public bool OneCycle()
         {
             ResetDisplay();
 
             bool grabSuccess = UseCamera ? Grab(0) : VirtualGrab();
-            if (!grabSuccess) return;
+            if (!grabSuccess)
+            {
+                SLogger.Write("모든 이미지 검사 완료 - 사이클 종료");
+                StopCycle();
+                return false;
+            }
 
             RunInspect();
-
             Thread.Sleep(300);
+            return true;
         }
 
-        //------- 실제 검사 프로세스 실행 (체크박스 필터 적용) -------
+        //------- 실제 검사 프로세스 -------
         private void RunInspect()
         {
             bool isDefect = false;
-
-            // 1. 윈도우 검사 실행
             _inspWorker.RunInspect(out isDefect);
-
-            // 2. 건반 위치 탐색 (_lastMatchedKeyRects 갱신, 항상 실행)
             RunKeyMatch();
-
-            // 3. 볼트/각인 검사 실행 (ResultForm 결과 전송, 항상 실행)
             RunBoltMark();
-
-            // 4. ✅ static 프로퍼티로 체크박스 상태 읽어서 필터링된 결과만 화면 표시
             _inspWorker.RunDisplayWithOptions(
-                showKeyboard: JYVision.Property.xylophone.ShowKeyboard,
-                showBolt: JYVision.Property.xylophone.ShowBolt,
-                showMark: JYVision.Property.xylophone.ShowMark);
+                showKeyboard: xylophone.ShowKeyboard,
+                showBolt: xylophone.ShowBolt,
+                showMark: xylophone.ShowMark);
         }
 
-        //------- 사이클 중지 -------
         public void StopCycle()
         {
-            if (_inspWorker != null) _inspWorker.Stop();
+            _inspWorker?.Stop();
             VisionSequence.Inst.StopAutoRun();
             _isInspectMode = false;
             SetWorkingState(WorkingState.NONE);
         }
 
-        //------- 가상(이미지 파일) 그랩 -------
         public bool VirtualGrab()
         {
-            if (_imageLoader is null) return false;
-
-            string imagePath = _imageLoader.GetNextImagePath();
-            if (imagePath == "") return false;
-
-            SetImageBuffer(imagePath);
+            if (_imageLoader == null) return false;
+            string path = _imageLoader.GetNextImagePath();
+            if (path == "") return false;
+            SetImageBuffer(path);
             _imageSpace.Split(0);
             return true;
         }
 
-        //------- 시퀀스 명령 핸들러 -------
         private void SeqCommand(object sender, SeqCmd seqCmd, object Param)
         {
             switch (seqCmd)
             {
                 case SeqCmd.InspStart:
                     SLogger.Write("MMI : InspStart", SLogger.LogType.Info);
-                    if (UseCamera)
-                    { if (!Grab(0)) SLogger.Write("Failed to grab", SLogger.LogType.Error); }
-                    else
-                    { if (!VirtualGrab()) SLogger.Write("Failed to virtual grab", SLogger.LogType.Error); }
+                    if (UseCamera) { if (!Grab(0)) SLogger.Write("Failed to grab", SLogger.LogType.Error); }
+                    else { if (!VirtualGrab()) SLogger.Write("Failed to virtual grab", SLogger.LogType.Error); }
                     break;
-
                 case SeqCmd.InspEnd:
                     SLogger.Write("MMI : InspEnd", SLogger.LogType.Info);
-                    SLogger.Write("검사 종료");
                     VisionSequence.Inst.VisionCommand(Vision2Mmi.InspEnd, "");
                     break;
             }
         }
 
-        //------- 검사 준비 -------
         public bool InspectReady(string lotNumber, string serialID)
         {
             _lotNumber = lotNumber;
@@ -632,7 +524,6 @@ namespace JYVision.Core
             return true;
         }
 
-        //------- 자동 운전 가동 -------
         public bool StartAutoRun()
         {
             SLogger.Write("Action : StartAutoRun");
@@ -641,45 +532,30 @@ namespace JYVision.Core
             {
                 SaveImageIndex = 0;
                 _capturePath = Path.Combine(Path.GetDirectoryName(_model.ModelPath), "Capture");
-
                 if (!Directory.Exists(_capturePath))
                     Directory.CreateDirectory(_capturePath);
                 else
-                    foreach (string file in Directory.GetFiles(_capturePath))
-                        try { File.Delete(file); }
-                        catch (Exception ex)
-                        { SLogger.Write($"파일 삭제 실패: {file} / {ex.Message}", SLogger.LogType.Error); }
+                    foreach (string f in Directory.GetFiles(_capturePath))
+                        try { File.Delete(f); }
+                        catch (Exception ex) { SLogger.Write($"파일 삭제 실패: {f} / {ex.Message}", SLogger.LogType.Error); }
             }
 
             string modelPath = CurModel.ModelPath;
             if (modelPath == "")
-            {
-                SLogger.Write("모델이 없습니다.", SLogger.LogType.Error);
-                MessageBox.Show("모델이 없습니다.");
-                return false;
-            }
+            { SLogger.Write("모델이 없습니다.", SLogger.LogType.Error); MessageBox.Show("모델이 없습니다."); return false; }
 
             LiveMode = false;
             UseCamera = SettingXml.Inst.CamType != CameraType.None;
             SetWorkingState(WorkingState.INSPECT);
-
-            string modelName = Path.GetFileNameWithoutExtension(modelPath);
-            VisionSequence.Inst.StartAutoRun(modelName);
+            VisionSequence.Inst.StartAutoRun(Path.GetFileNameWithoutExtension(modelPath));
             _isInspectMode = true;
             return true;
         }
 
-        //===== [그룹 10] 기타 제어 및 유틸리티 =====
+        //===== [그룹 10] 기타 =====
 
-        public void SetWorkingState(WorkingState workingState)
-        {
-            MainForm.GetDockForm<CameraForm>()?.SetWorkingState(workingState);
-        }
-
-        public void SetExposure(long exposureTime)
-        {
-            _grabManager?.SetExposureTime(exposureTime);
-        }
+        public void SetWorkingState(WorkingState ws) => MainForm.GetDockForm<CameraForm>()?.SetWorkingState(ws);
+        public void SetExposure(long exposureTime) => _grabManager?.SetExposureTime(exposureTime);
 
         //===== [그룹 11] 리소스 해제 =====
 

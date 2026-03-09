@@ -11,7 +11,6 @@ using System.Linq;
 using System.Windows.Forms;
 using WeifenLuo.WinFormsUI.Docking;
 
-// ✅ OpenCvSharp과의 모호한 참조 해결
 using Size = System.Drawing.Size;
 using Point = System.Drawing.Point;
 
@@ -26,8 +25,8 @@ namespace JYVision
         public int MarkNg { get; set; }
         public int TotalNg => BoltNg + MarkNg;
         public string Status => TotalNg > 0 ? "NG" : "OK";
-        public Bitmap Thumbnail { get; set; }   // 리스트 썸네일 (80x60)
-        public Bitmap PreviewImage { get; set; }   // 상세 패널용 큰 이미지
+        public Bitmap Thumbnail { get; set; }
+        public Bitmap PreviewImage { get; set; }
     }
 
     public partial class ResultForm : DockContent
@@ -39,7 +38,6 @@ namespace JYVision
         private ObjectListView _listView;
         private ImageList _imgList;
 
-        // 상세 패널 컨트롤
         private Panel _detailPanel;
         private PictureBox _picPreview;
         private Label _lblBoltNg;
@@ -53,10 +51,9 @@ namespace JYVision
         public ResultForm()
         {
             InitializeComponent();
-            InitResultLayout(); // ✅ Control.InitLayout() 충돌 방지
+            InitResultLayout();
         }
 
-        // ✅ InitResultLayout으로 rename (Control.InitLayout 숨김 방지)
         private void InitResultLayout()
         {
             // ── 상단 버튼바 ──────────────────────────────────
@@ -89,35 +86,33 @@ namespace JYVision
                 ForeColor = Color.White,
                 Font = new Font("Arial", 9, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Text = "총 0건  |  Bolt NG: 0  |  Mark NG: 0"
+                Text = "총 0건  |  OK: 0  |  NG: 0"
             };
 
             _topPanel.Controls.AddRange(new Control[] { _btnClear, _lblTotal });
 
-            // ── SplitContainer (좌: 누적 리스트 / 우: 상세) ──
+            // ── SplitContainer ──────────────────────────────
             _split = new SplitContainer
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
-                Panel1MinSize = 83,  // ✅ 작게 설정 (SplitterDistance 에러 방지)
+                Panel1MinSize = 83,
                 Panel2MinSize = 50
             };
-
-            // ✅ 폼 크기 확정 후 비율 설정 (SizeChanged 사용)
             _split.SizeChanged += (s, e) =>
             {
                 if (_split.Width > 100 && _split.SplitterDistance < 50)
                     _split.SplitterDistance = (int)(_split.Width * 0.6);
             };
 
-            // ── 좌: ImageList ─────────────────────────────────
+            // ── ImageList ───────────────────────────────────
             _imgList = new ImageList
             {
                 ImageSize = new Size(80, 60),
                 ColorDepth = ColorDepth.Depth32Bit
             };
 
-            // ── 좌: ObjectListView ────────────────────────────
+            // ── ObjectListView ──────────────────────────────
             _listView = new ObjectListView
             {
                 Dock = DockStyle.Fill,
@@ -133,7 +128,6 @@ namespace JYVision
                 HideSelection = false
             };
 
-            // ── 컬럼 정의 ─────────────────────────────────────
             var colThumb = new OLVColumn("이미지", "")
             {
                 Width = 75,
@@ -152,41 +146,14 @@ namespace JYVision
                     return null;
                 }
             };
-            var colNo = new OLVColumn("No", nameof(InspSummaryRow.No))
-            {
-                Width = 40,
-                TextAlign = HorizontalAlignment.Center,
-                IsEditable = false
-            };
-            var colTime = new OLVColumn("시간", nameof(InspSummaryRow.Time))
-            {
-                Width = 75,
-                TextAlign = HorizontalAlignment.Center,
-                IsEditable = false
-            };
-            var colBolt = new OLVColumn("Bolt NG", nameof(InspSummaryRow.BoltNg))
-            {
-                Width = 65,
-                TextAlign = HorizontalAlignment.Center,
-                IsEditable = false
-            };
-            var colMark = new OLVColumn("Mark NG", nameof(InspSummaryRow.MarkNg))
-            {
-                Width = 65,
-                TextAlign = HorizontalAlignment.Center,
-                IsEditable = false
-            };
-            var colStatus = new OLVColumn("판정", nameof(InspSummaryRow.Status))
-            {
-                Width = 55,
-                TextAlign = HorizontalAlignment.Center,
-                IsEditable = false
-            };
+            var colNo = new OLVColumn("No", nameof(InspSummaryRow.No)) { Width = 40, TextAlign = HorizontalAlignment.Center, IsEditable = false };
+            var colTime = new OLVColumn("시간", nameof(InspSummaryRow.Time)) { Width = 75, TextAlign = HorizontalAlignment.Center, IsEditable = false };
+            var colBolt = new OLVColumn("Bolt NG", nameof(InspSummaryRow.BoltNg)) { Width = 65, TextAlign = HorizontalAlignment.Center, IsEditable = false };
+            var colMark = new OLVColumn("Mark NG", nameof(InspSummaryRow.MarkNg)) { Width = 65, TextAlign = HorizontalAlignment.Center, IsEditable = false };
+            var colStatus = new OLVColumn("판정", nameof(InspSummaryRow.Status)) { Width = 55, TextAlign = HorizontalAlignment.Center, IsEditable = false };
 
-            _listView.Columns.AddRange(new OLVColumn[]
-                { colThumb, colNo, colTime, colBolt, colMark, colStatus });
+            _listView.Columns.AddRange(new OLVColumn[] { colThumb, colNo, colTime, colBolt, colMark, colStatus });
 
-            // ✅ NG 행 빨강 Bold 강조
             _listView.RowFormatter = item =>
             {
                 if (item.RowObject is InspSummaryRow r && r.TotalNg > 0)
@@ -199,65 +166,54 @@ namespace JYVision
             _listView.SelectionChanged += OnRowSelected;
             _split.Panel1.Controls.Add(_listView);
 
-            // ── 우: 상세 패널 ─────────────────────────────────
+            // ── 상세 패널 ───────────────────────────────────
             _detailPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(30, 30, 35),
-                Padding = new Padding(8) // 테두리 여백
+                Padding = new Padding(8)
             };
 
-            // ✅ 1. 프리뷰 이미지를 왼쪽에 '고정 크기'로 배치 (스케치처럼 정사각형 비율)
             _picPreview = new PictureBox
             {
                 Dock = DockStyle.Left,
-                Width = 150, // 필요에 따라 이미지 너비를 조절하세요 (ex: 160~200)
+                Width = 150,
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Black,
                 BorderStyle = BorderStyle.FixedSingle
             };
 
-            // ✅ 2. 라벨 패널을 남은 영역(Fill)에 배치하여 텍스트가 이미지 바로 옆에 오도록 설정
-            Panel _labelPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.Transparent
-            };
+            Panel labelPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
 
-            // ✅ 3. 수치 라벨 생성 헬퍼 (위치 지정 방식 변경)
             Label MakeLabel(string text, int y, Color color) => new Label
             {
-                AutoSize = true, // 텍스트 길이에 맞춰 딱 맞게 표시
-                Location = new Point(15, y), // 이미지 우측 경계로부터 15px 떨어져서 시작
+                AutoSize = true,
+                Location = new Point(15, y),
                 ForeColor = color,
                 Font = new Font("Arial", 11, FontStyle.Bold),
                 BackColor = Color.Transparent,
                 Text = text
             };
 
-            // ✅ 4. y좌표 간격을 주며 세로로 배치
             _lblBoltNg = MakeLabel("Bolt NG  : -", 20, Color.OrangeRed);
             _lblMarkNg = MakeLabel("Mark NG  : -", 60, Color.OrangeRed);
             _lblTotalNg = MakeLabel("Total NG : -", 100, Color.Yellow);
             _lblStatus = MakeLabel("판  정   : -", 140, Color.White);
 
-            // 라벨 패널에 추가
-            _labelPanel.Controls.Add(_lblBoltNg);
-            _labelPanel.Controls.Add(_lblMarkNg);
-            _labelPanel.Controls.Add(_lblTotalNg);
-            _labelPanel.Controls.Add(_lblStatus);
+            labelPanel.Controls.Add(_lblBoltNg);
+            labelPanel.Controls.Add(_lblMarkNg);
+            labelPanel.Controls.Add(_lblTotalNg);
+            labelPanel.Controls.Add(_lblStatus);
 
-            // ✅ 5. 상세 패널에 조립 (순서 중요: Left 도킹인 _picPreview가 나중에 들어가야 정상 배치됨)
-            _detailPanel.Controls.Add(_labelPanel);
+            _detailPanel.Controls.Add(labelPanel);
             _detailPanel.Controls.Add(_picPreview);
-
             _split.Panel2.Controls.Add(_detailPanel);
 
             Controls.Add(_split);
-            Controls.Add(_topPanel); // ✅ Top은 마지막에 추가해야 Fill과 충돌 없음
+            Controls.Add(_topPanel);
         }
 
-        // ===== InspWorker → 누적 행 추가 =====
+        // ===== 검사 결과 추가 =====
         public void UpdateNgSummary(int boltNg, int markNg, Bitmap capturedImage = null)
         {
             if (InvokeRequired)
@@ -268,10 +224,8 @@ namespace JYVision
 
             _runCount++;
 
-            // 썸네일 생성 (80x60)
             Bitmap thumb = null;
-            if (capturedImage != null)
-                thumb = ResizeBitmap(capturedImage, 80, 60);
+            if (capturedImage != null) thumb = ResizeBitmap(capturedImage, 80, 60);
 
             var row = new InspSummaryRow
             {
@@ -286,17 +240,13 @@ namespace JYVision
             _rows.Add(row);
             _listView.SetObjects(_rows);
             _listView.EnsureModelVisible(row);
-
-            // ✅ 최신 행 자동 선택 → 상세 패널 갱신
             _listView.SelectObject(row);
             RefreshSummaryLabel();
         }
 
-        // ===== 행 선택 → 상세 패널 갱신 =====
         private void OnRowSelected(object sender, EventArgs e)
         {
-            if (_listView.SelectedObject is InspSummaryRow row)
-                ShowDetail(row);
+            if (_listView.SelectedObject is InspSummaryRow row) ShowDetail(row);
         }
 
         private void ShowDetail(InspSummaryRow row)
@@ -317,20 +267,19 @@ namespace JYVision
             _lblStatus.Font = new Font("Arial", 13, FontStyle.Bold);
         }
 
-        // ===== 누적 통계 라벨 갱신 =====
         private void RefreshSummaryLabel()
         {
             int total = _rows.Count;
             int ngCount = _rows.Count(r => r.TotalNg > 0);
             int okCount = total - ngCount;
-
             _lblTotal.Text = $"총 {total}건  |  OK: {okCount}  |  NG: {ngCount}";
             _lblTotal.ForeColor = ngCount > 0 ? Color.OrangeRed : Color.LightGreen;
         }
 
-        // ===== 전체 초기화 =====
+        // ===== Clear 버튼 → 결과 + 이미지 카운터 초기화 =====
         private void ClearAll()
         {
+            // 결과 목록 초기화
             _rows.Clear();
             _runCount = 0;
             _imgList.Images.Clear();
@@ -340,11 +289,13 @@ namespace JYVision
             _lblMarkNg.Text = "Mark NG  : -";
             _lblTotalNg.Text = "Total NG : -";
             _lblStatus.Text = "판  정   : -";
-            _lblTotal.Text = "총 0건  |  Bolt NG: 0  |  Mark NG: 0";
+            _lblTotal.Text = "총 0건  |  OK: 0  |  NG: 0";
             _lblTotal.ForeColor = Color.White;
+
+            // ✅ 이미지 카운터도 0으로 리셋 → 다음 검사 때 처음 이미지부터
+            Global.Inst.InspStage.ResetImageLoader();
         }
 
-        // ===== 비트맵 리사이즈 헬퍼 =====
         private static Bitmap ResizeBitmap(Bitmap src, int w, int h)
         {
             var bmp = new Bitmap(w, h);
@@ -356,7 +307,6 @@ namespace JYVision
             return bmp;
         }
 
-        // ===== 기존 호환 메서드 유지 =====
         public void AddModelResult(Model curModel) { }
         public void AddWindowResult(InspWindow w) { }
         public void AddInspResult(InspResult r) { }

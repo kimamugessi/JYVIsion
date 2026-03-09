@@ -43,15 +43,16 @@ namespace JYVision.Inspect
             IsRunning = true;
             while (!token.IsCancellationRequested)
             {
-                Global.Inst.InspStage.OneCycle();
-                
+                // ✅ OneCycle이 false 반환(이미지 소진)하면 루프 즉시 종료
+                bool hasMore = Global.Inst.InspStage.OneCycle();
+                if (!hasMore) break;
             }
             IsRunning = false;
+            Global.Inst.InspStage.SetWorkingState(WorkingState.NONE);
         }
 
         //===== [그룹 2] 검사 실행 메인 흐름 =====
 
-        // ✅ 잔상 방지: 화면 그리기 제거, 결과 리스트만 반환
         public List<DrawInspectInfo> RunInspect(out bool isDefect)
         {
             isDefect = false;
@@ -86,7 +87,6 @@ namespace JYVision.Inspect
 
         //===== [그룹 3] 건반 위치 탐색 및 보정 =====
 
-        // ✅ 잔상 방지: 화면 그리기 제거, 결과 리스트만 반환
         public List<DrawInspectInfo> RunKeyMatch()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
@@ -207,7 +207,6 @@ namespace JYVision.Inspect
 
         //===== [그룹 4] 세부 부품(볼트/각인) 검사 =====
 
-        // ✅ 잔상 방지: 화면 그리기 제거, 결과 리스트만 반환
         public List<DrawInspectInfo> RunBoltMark()
         {
             List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
@@ -343,9 +342,6 @@ namespace JYVision.Inspect
                     if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
                 }
             }
-
-            // ✅ 결과창 중복 누적 방지: 화면 옵션만 변경할 때는 결과를 다시 보내지 않습니다.
-            // SendResultToForm(_boltNgCount, _markNgCount); 
 
             cameraForm?.ResetDisplay();
             if (displayList.Count > 0) cameraForm?.AddRect(displayList);
