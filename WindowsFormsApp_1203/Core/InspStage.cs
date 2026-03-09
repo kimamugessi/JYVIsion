@@ -2,6 +2,7 @@
 using JYVision.Core;
 using JYVision.Grab;
 using JYVision.Inspect;
+using JYVision.Property;
 using JYVision.SaigeSDK;
 using JYVision.Sequence;
 using JYVision.Setting;
@@ -80,6 +81,7 @@ namespace JYVision.Core
         {
             return _inspWorker.RunBoltMark();
         }
+
         //------- 옵션 기반 디스플레이 제어 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
@@ -163,12 +165,10 @@ namespace JYVision.Core
                 {
                     if (matImage.Empty()) return;
 
-                    // 4바이트 정렬 Width 계산
                     int alignedWidth = (matImage.Width + 3) / 4 * 4;
                     int bytesPerPixel = (int)matImage.ElemSize();
                     int imageStride = alignedWidth * bytesPerPixel;
 
-                    // 메모리 크기가 다르면 재할당
                     if (_imageSpace.ImageSize.Width != alignedWidth ||
                         _imageSpace.ImageSize.Height != matImage.Height)
                     {
@@ -240,7 +240,6 @@ namespace JYVision.Core
 
         //===== [그룹 5] 티칭 및 ROI 윈도우 관리 =====
 
-        //------- 속성창 데이터 갱신 -------
         private void UpdateProperty(InspWindow inspWindow)
         {
             if (inspWindow == null) return;
@@ -249,14 +248,12 @@ namespace JYVision.Core
             propertiesForm.UpdateProperty(inspWindow);
         }
 
-        //------- 티칭 이미지 갱신 -------
         public void UpdateTeachingImage(int index)
         {
             if (_selectedInspWindow == null) return;
             SetTeachingImage(_selectedInspWindow, index);
         }
 
-        //------- 티칭 이미지 삭제 -------
         public void DelTeachingImage(int index)
         {
             if (_selectedInspWindow == null) return;
@@ -266,7 +263,6 @@ namespace JYVision.Core
                 UpdateProperty(_selectedInspWindow);
         }
 
-        //------- 현재 화면에서 티칭 이미지 캡처/설정 -------
         public void SetTeachingImage(InspWindow inspWindow, int index = -1)
         {
             if (inspWindow == null) return;
@@ -301,14 +297,12 @@ namespace JYVision.Core
             }
         }
 
-        //------- 특정 윈도우 검사 시도 -------
         public void TryInspection(InspWindow inspWindow)
         {
             UpdateDiagramEntity();
             InspWorker.TryInspect(inspWindow, InspectType.InspNone);
         }
 
-        //------- 검사 윈도우 선택 처리 -------
         public void SelectInspWindow(InspWindow inspWindow)
         {
             _selectedInspWindow = inspWindow;
@@ -324,7 +318,6 @@ namespace JYVision.Core
             Global.Inst.InspStage.PreView.SetInspWindow(inspWindow);
         }
 
-        //------- 검사 윈도우 추가 -------
         public void AddInspWindow(InspWindowType windowType, Rect rect)
         {
             InspWindow inspWindow = _model.AddInspWindow(windowType);
@@ -344,7 +337,6 @@ namespace JYVision.Core
             }
         }
 
-        //------- 검사 윈도우 복제/추가 -------
         public bool AddInspWindow(InspWindow sourceWindow, OpenCvSharp.Point offset)
         {
             InspWindow cloneWindow = sourceWindow.Clone(offset);
@@ -362,7 +354,6 @@ namespace JYVision.Core
             return true;
         }
 
-        //------- 검사 윈도우 이동 -------
         public void MoveInspWindow(InspWindow inspWindow, OpenCvSharp.Point offset)
         {
             if (inspWindow == null) return;
@@ -370,7 +361,6 @@ namespace JYVision.Core
             UpdateProperty(inspWindow);
         }
 
-        //------- 검사 윈도우 영역 수정 -------
         public void ModifyInspWindow(InspWindow inspWindow, Rect rect)
         {
             if (inspWindow == null) return;
@@ -379,14 +369,12 @@ namespace JYVision.Core
             UpdateProperty(inspWindow);
         }
 
-        //------- 검사 윈도우 삭제 (단일) -------
         public void DelInspWindow(InspWindow inspWindow)
         {
             _model.DelInspWindow(inspWindow);
             UpdateDiagramEntity();
         }
 
-        //------- 검사 윈도우 삭제 (리스트) -------
         public void DelInspWindow(List<InspWindow> inspWindowList)
         {
             _model.DelInspWindowList(inspWindowList);
@@ -395,14 +383,12 @@ namespace JYVision.Core
 
         //===== [그룹 6] 카메라 제어 및 그랩 =====
 
-        //------- 카메라 그랩 실행 -------
         public bool Grab(int bufferIndex)
         {
             if (_grabManager == null) return false;
             return _grabManager.Grab(bufferIndex, true);
         }
 
-        //------- 전송 완료 콜백 핸들러 -------
         private async void _multiGrab_TransferCompleted(object sender, object e)
         {
             int bufferIndex = (int)e;
@@ -435,19 +421,16 @@ namespace JYVision.Core
 
         //===== [그룹 7] 디스플레이 및 화면 갱신 =====
 
-        //------- 그랩 이미지 화면 표시 -------
         private void DisplayGrabImage(int bufferIndex)
         {
             MainForm.GetDockForm<CameraForm>()?.UpdateDisplay();
         }
 
-        //------- 외부 비트맵 데이터로 화면 갱신 (누락 복구됨) -------
         public void UpdateDisplay(Bitmap bitmap)
         {
             MainForm.GetDockForm<CameraForm>()?.UpdateDisplay(bitmap);
         }
 
-        //------- 프리뷰 이미지 설정 -------
         public void SetPreviewImage(eImageChannel channel)
         {
             if (_previewImage == null) return;
@@ -456,13 +439,11 @@ namespace JYVision.Core
             SetImageChannel(channel);
         }
 
-        //------- 화면 표시 채널 설정 -------
         public void SetImageChannel(eImageChannel channel)
         {
             MainForm.GetDockForm<CameraForm>()?.SetImageChannel(channel);
         }
 
-        //------- 비트맵/매트 데이터 획득 유틸리티 -------
         public Bitmap GetBitmap(int bufferIndex = -1, eImageChannel imageChannel = eImageChannel.None)
         {
             if (bufferIndex >= 0) SelBufferIndex = bufferIndex;
@@ -477,7 +458,6 @@ namespace JYVision.Core
             return ImageSpace.GetMat(SelBufferIndex, imageChannel);
         }
 
-        //------- UI 다이어그램 및 뷰어 갱신 -------
         public void UpdateDiagramEntity()
         {
             MainForm.GetDockForm<CameraForm>()?.UpdateDiagramEntity();
@@ -496,7 +476,6 @@ namespace JYVision.Core
 
         //===== [그룹 8] 모델 데이터 관리 =====
 
-        //------- 모델 파일 로드 -------
         public bool LoadModel(string filePath)
         {
             SLogger.Write($"모델 로딩:{filePath}");
@@ -517,7 +496,6 @@ namespace JYVision.Core
             return true;
         }
 
-        //------- 모델 파일 저장 -------
         public void SaveModel(string filePath)
         {
             SLogger.Write($"모델 저장:{filePath}");
@@ -527,7 +505,6 @@ namespace JYVision.Core
                 CurModel.SaveAs(filePath);
         }
 
-        //------- 최근 모델 자동 로딩 체크 -------
         private bool LastestModelOpen()
         {
             if (_lastestModelOpen) return true;
@@ -545,7 +522,6 @@ namespace JYVision.Core
 
         //===== [그룹 9] 검사 사이클 및 시퀀스 처리 =====
 
-        //------- 검사 사이클 시작/단일 실행 -------
         public void CycleInspect(bool isCycle)
         {
             if (InspWorker.IsRunning) return;
@@ -570,40 +546,35 @@ namespace JYVision.Core
         //------- 검사 한 주기 실행 -------
         public void OneCycle()
         {
-            // 1. 이미지 교체 전 화면만 클리어
             ResetDisplay();
 
-            // 2. 이미지 로드
             bool grabSuccess = UseCamera ? Grab(0) : VirtualGrab();
-            if (!grabSuccess) return;  // ✅ Sleep 낭비 제거
+            if (!grabSuccess) return;
 
-            // 3. 검사 즉시 실행 → 결과 화면에 표시
             RunInspect();
 
-            // 4. 결과를 충분히 볼 수 있도록 대기
             Thread.Sleep(300);
         }
 
-        //------- 실제 검사 프로세스 실행 -------
+        //------- 실제 검사 프로세스 실행 (체크박스 필터 적용) -------
         private void RunInspect()
         {
-            // ✅ KeyMatch / BoltMark 병렬 실행 (단, KeyMatch 결과가 BoltMark 입력이므로 순서 유지)
             bool isDefect = false;
+
+            // 1. 윈도우 검사 실행
             _inspWorker.RunInspect(out isDefect);
 
-            var keyResults = RunKeyMatch();       // _lastMatchedKeyRects 채움
-            var boltResults = RunBoltMark();       // 위 결과 사용
+            // 2. 건반 위치 탐색 (_lastMatchedKeyRects 갱신, 항상 실행)
+            RunKeyMatch();
 
-            var totalList = new List<DrawInspectInfo>(keyResults.Count + boltResults.Count);
-            totalList.AddRange(keyResults);
-            totalList.AddRange(boltResults);
+            // 3. 볼트/각인 검사 실행 (ResultForm 결과 전송, 항상 실행)
+            RunBoltMark();
 
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
-            if (cameraForm != null && totalList.Count > 0)
-            {
-                cameraForm.ResetDisplay();
-                cameraForm.AddRect(totalList);
-            }
+            // 4. ✅ static 프로퍼티로 체크박스 상태 읽어서 필터링된 결과만 화면 표시
+            _inspWorker.RunDisplayWithOptions(
+                showKeyboard: JYVision.Property.xylophone.ShowKeyboard,
+                showBolt: JYVision.Property.xylophone.ShowBolt,
+                showMark: JYVision.Property.xylophone.ShowMark);
         }
 
         //------- 사이클 중지 -------
@@ -625,7 +596,6 @@ namespace JYVision.Core
 
             SetImageBuffer(imagePath);
             _imageSpace.Split(0);
-            //DisplayGrabImage(0);
             return true;
         }
 
@@ -650,11 +620,11 @@ namespace JYVision.Core
             }
         }
 
-        //------- 검사 준비 (필드 할당 포함) -------
+        //------- 검사 준비 -------
         public bool InspectReady(string lotNumber, string serialID)
         {
-            _lotNumber = lotNumber; // 필드 유지
-            _serialID = serialID;   // 필드 유지
+            _lotNumber = lotNumber;
+            _serialID = serialID;
             LiveMode = false;
             UseCamera = SettingXml.Inst.CamType != CameraType.None;
             CheckImageBuffer();
@@ -701,19 +671,17 @@ namespace JYVision.Core
 
         //===== [그룹 10] 기타 제어 및 유틸리티 =====
 
-        //------- 현재 장비 상태 설정 -------
         public void SetWorkingState(WorkingState workingState)
         {
             MainForm.GetDockForm<CameraForm>()?.SetWorkingState(workingState);
         }
 
-        //------- 카메라 노출 설정 -------
         public void SetExposure(long exposureTime)
         {
             _grabManager?.SetExposureTime(exposureTime);
         }
 
-        //===== [그룹 11] 리소스 해제 (Disposable) =====
+        //===== [그룹 11] 리소스 해제 =====
 
         private bool disposed = false;
 
