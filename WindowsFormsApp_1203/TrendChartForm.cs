@@ -50,7 +50,7 @@ namespace JYVision.Inspect
             Text = "불량률 트렌드";
             BackColor = ColBg;
             ForeColor = ColText;
-            Font = new Font("맑은 고딕", 8.5f);
+            Font = new Font("Segoe UI", 8.5f);
             DockAreas = DockAreas.DockLeft | DockAreas.DockRight |
                           DockAreas.DockBottom | DockAreas.Float | DockAreas.Document;
 
@@ -65,7 +65,7 @@ namespace JYVision.Inspect
             {
                 Text = "▶ 불량률 트렌드",
                 ForeColor = Color.White,
-                Font = new Font("맑은 고딕", 8.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -122,7 +122,7 @@ namespace JYVision.Inspect
                 Location = new Point(38, 4),
                 Width = 80,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("맑은 고딕", 8f)
+                Font = new Font("Segoe UI", 8f)
             };
             _cmbRange.Items.AddRange(new object[] { "20건", "50건", "100건", "200건", "전체" });
             _cmbRange.SelectedIndex = 1;
@@ -130,11 +130,11 @@ namespace JYVision.Inspect
 
             _btnClear = new Button
             {
-                Text = "초기화",
+                Text = "Clear",
                 Location = new Point(124, 3),
                 Size = new Size(48, 22),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("맑은 고딕", 8f),
+                Font = new Font("Segoe UI", 8f),
                 Cursor = Cursors.Hand
             };
             _btnClear.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
@@ -169,7 +169,7 @@ namespace JYVision.Inspect
                 TextAlign = ContentAlignment.MiddleLeft,
                 ForeColor = ColText,
                 BackColor = Color.FromArgb(248, 248, 248),
-                Font = new Font("맑은 고딕", 8f),
+                Font = new Font("Segoe UI", 8f),
                 Padding = new Padding(4, 0, 0, 0),
                 Margin = new Padding(0)
             };
@@ -184,7 +184,7 @@ namespace JYVision.Inspect
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = color,
                 BackColor = Color.White,
-                Font = new Font("맑은 고딕", 8.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
                 Margin = new Padding(0)
             };
         }
@@ -218,7 +218,7 @@ namespace JYVision.Inspect
                     LineAlignment = StringAlignment.Center
                 };
                 g.DrawString("검사 데이터 없음",
-                    new Font("맑은 고딕", 9f),
+                    new Font("Segoe UI", 9f),
                     new SolidBrush(Color.FromArgb(180, 180, 180)),
                     new RectangleF(plot.X, plot.Y, plot.Width, plot.Height), sf);
                 return;
@@ -229,7 +229,7 @@ namespace JYVision.Inspect
             int yMax = (int)(Math.Ceiling(maxVal * 1.3));
             if (yMax < 3) yMax = 3;
 
-            var lf = new Font("맑은 고딕", 7f);
+            var lf = new Font("Segoe UI", 7f);
             var lb = new SolidBrush(ColText);
             var gPen = new Pen(ColGrid, 1) { DashStyle = DashStyle.Dash };
 
@@ -300,7 +300,7 @@ namespace JYVision.Inspect
                 Tuple.Create("■ Mark", ColMark),
                 Tuple.Create("-- Total", ColTotal)
             };
-            var lf = new Font("맑은 고딕", 7f);
+            var lf = new Font("Segoe UI", 7f);
             float lx = plot.Left + 4;
             float ly = plot.Top + 3;
             foreach (var item in items)
@@ -315,7 +315,7 @@ namespace JYVision.Inspect
             List<InspRecord> view, int n, int yMax, int denom)
         {
             int streak = 0;
-            var wf = new Font("맑은 고딕", 7f, FontStyle.Bold);
+            var wf = new Font("Segoe UI", 7f, FontStyle.Bold);
             for (int i = 0; i < n; i++)
             {
                 var r = view[i];
@@ -374,6 +374,19 @@ namespace JYVision.Inspect
             _lblNgRate.Text = "0.0 %";
             _lblNgRate.ForeColor = ColTotal;
             _chartPanel.Invalidate();
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            // 
+            // TrendChartForm
+            // 
+            this.ClientSize = new System.Drawing.Size(282, 256);
+            this.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Name = "TrendChartForm";
+            this.ResumeLayout(false);
+
         }
     }
 }

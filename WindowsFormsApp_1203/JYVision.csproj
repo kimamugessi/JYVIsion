@@ -344,6 +344,9 @@
     <EmbeddedResource Include="StatisticForm.resx">
       <DependentUpon>StatisticForm.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="TrendChartForm.resx">
+      <DependentUpon>TrendChartForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="UIControl\ImageViewCtrl.resx">
       <DependentUpon>ImageViewCtrl.cs</DependentUpon>
     </EmbeddedResource>

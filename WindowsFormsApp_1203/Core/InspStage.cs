@@ -474,12 +474,12 @@ namespace JYVision.Core
             bool isDefect = false;
             _inspWorker.RunInspect(out isDefect);
             RunKeyMatch();
-            DisplayGrabImage(0);
             RunBoltMark();
             _inspWorker.RunDisplayWithOptions(
                 showKeyboard: xylophone.ShowKeyboard,
                 showBolt: xylophone.ShowBolt,
                 showMark: xylophone.ShowMark);
+            DisplayGrabImage(0);
         }
 
         public void StopCycle()

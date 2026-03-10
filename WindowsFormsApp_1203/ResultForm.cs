@@ -199,14 +199,14 @@ namespace JYVision
                 AutoSize = true,
                 Location = new Point(15, y),
                 ForeColor = color,
-                Font = new Font("Arial", 11, FontStyle.Bold),
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 BackColor = Color.Transparent,
                 Text = text
             };
             _lblBoltNg = MakeLabel("Bolt NG  : -", 20, Color.OrangeRed);
-            _lblMarkNg = MakeLabel("Mark NG  : -", 60, Color.OrangeRed);
-            _lblTotalNg = MakeLabel("Total NG : -", 100, Color.Yellow);
-            _lblStatus = MakeLabel("판  정   : -", 140, Color.White);
+            _lblMarkNg = MakeLabel("Mark NG  : -", 50, Color.OrangeRed);
+            _lblTotalNg = MakeLabel("Total NG : -", 80, Color.Yellow);
+            _lblStatus = MakeLabel("판  정   : -", 110, Color.White);
             labelPanel.Controls.AddRange(new Control[] { _lblBoltNg, _lblMarkNg, _lblTotalNg, _lblStatus });
 
             _detailPanel.Controls.Add(labelPanel);
@@ -224,7 +224,7 @@ namespace JYVision
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Location = new Point(40, 4),
                 Width = 75,
-                Font = new Font("맑은 고딕", 8f)
+                Font = new Font("Segoe UI", 8f)
             };
             _cmbRange.Items.AddRange(new object[] { "20건", "50건", "100건", "200건", "전체" });
             _cmbRange.SelectedIndex = 1;
@@ -232,11 +232,11 @@ namespace JYVision
 
             var btnTrendClear = new Button
             {
-                Text = "초기화",
+                Text = "Clear",
                 Location = new Point(122, 3),
                 Size = new Size(48, 22),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("맑은 고딕", 8f)
+                Font = new Font("Segoe UI", 7.5f)
             };
             btnTrendClear.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
             btnTrendClear.Click += (s, e) => ClearTrend();
@@ -317,7 +317,7 @@ namespace JYVision
             if (n == 0)
             {
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                g.DrawString("검사 데이터 없음", new Font("맑은 고딕", 9f),
+                g.DrawString("검사 데이터 없음", new Font("Segoe UI", 9f),
                     new SolidBrush(Color.FromArgb(180, 180, 180)),
                     new RectangleF(plot.X, plot.Y, plot.Width, plot.Height), sf);
                 return;
@@ -328,7 +328,7 @@ namespace JYVision
             int yMax = (int)(Math.Ceiling(maxVal * 1.3));
             if (yMax < 3) yMax = 3;
 
-            var lf = new Font("맑은 고딕", 7f);
+            var lf = new Font("Segoe UI", 7f);
             var lb = new SolidBrush(Color.FromArgb(80, 80, 80));
             var gPen = new Pen(ColGrid, 1) { DashStyle = DashStyle.Dash };
             int denom = n - 1 == 0 ? 1 : n - 1;
@@ -417,7 +417,7 @@ namespace JYVision
             _lblTotalNg.ForeColor = row.TotalNg > 0 ? Color.Yellow : Color.LimeGreen;
             _lblStatus.Text = $"판  정   : {row.Status}";
             _lblStatus.ForeColor = row.TotalNg > 0 ? Color.Red : Color.LimeGreen;
-            _lblStatus.Font = new Font("Arial", 13, FontStyle.Bold);
+            _lblStatus.Font = new Font("Segoe UI", 8, FontStyle.Bold);
         }
 
         private void RefreshSummaryLabel()
