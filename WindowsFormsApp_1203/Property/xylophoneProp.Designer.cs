@@ -39,9 +39,10 @@
             // 
             // btnBoltROI
             // 
-            this.btnBoltROI.Location = new System.Drawing.Point(16, 25);
+            this.btnBoltROI.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnBoltROI.Location = new System.Drawing.Point(16, 16);
             this.btnBoltROI.Name = "btnBoltROI";
-            this.btnBoltROI.Size = new System.Drawing.Size(57, 22);
+            this.btnBoltROI.Size = new System.Drawing.Size(62, 32);
             this.btnBoltROI.TabIndex = 1;
             this.btnBoltROI.Text = "검사";
             this.btnBoltROI.UseVisualStyleBackColor = true;
@@ -51,9 +52,10 @@
             // 
             this.cbKeybord.AutoSize = true;
             this.cbKeybord.Enabled = false;
+            this.cbKeybord.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbKeybord.Location = new System.Drawing.Point(20, 29);
             this.cbKeybord.Name = "cbKeybord";
-            this.cbKeybord.Size = new System.Drawing.Size(79, 18);
+            this.cbKeybord.Size = new System.Drawing.Size(79, 23);
             this.cbKeybord.TabIndex = 3;
             this.cbKeybord.Text = "Keybord";
             this.cbKeybord.UseVisualStyleBackColor = true;
@@ -62,9 +64,10 @@
             // 
             this.cbBolt.AutoSize = true;
             this.cbBolt.Enabled = false;
+            this.cbBolt.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbBolt.Location = new System.Drawing.Point(20, 53);
             this.cbBolt.Name = "cbBolt";
-            this.cbBolt.Size = new System.Drawing.Size(52, 18);
+            this.cbBolt.Size = new System.Drawing.Size(52, 23);
             this.cbBolt.TabIndex = 3;
             this.cbBolt.Text = "Bolt";
             this.cbBolt.UseVisualStyleBackColor = true;
@@ -73,9 +76,10 @@
             // 
             this.cbMark.AutoSize = true;
             this.cbMark.Enabled = false;
+            this.cbMark.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbMark.Location = new System.Drawing.Point(20, 77);
             this.cbMark.Name = "cbMark";
-            this.cbMark.Size = new System.Drawing.Size(57, 18);
+            this.cbMark.Size = new System.Drawing.Size(60, 23);
             this.cbMark.TabIndex = 3;
             this.cbMark.Text = "Mark";
             this.cbMark.UseVisualStyleBackColor = true;
@@ -85,6 +89,7 @@
             this.groupBox1.Controls.Add(this.cbBolt);
             this.groupBox1.Controls.Add(this.cbMark);
             this.groupBox1.Controls.Add(this.cbKeybord);
+            this.groupBox1.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.groupBox1.Location = new System.Drawing.Point(16, 63);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(178, 120);

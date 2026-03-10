@@ -5,6 +5,7 @@ using JYVision.Util;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -14,54 +15,113 @@ using System.Threading.Tasks;
 
 namespace JYVision.Inspect
 {
-    //===== 시각 검사 실행 및 결과 처리 워커 클래스 =====
-    public class InspWorker
+    // ===== 시각 검사 실행 및 결과 처리 워커 클래스 (최적화 버전) =====
+    public class InspWorker : IDisposable
     {
+        // ── 취소 토큰 ──
         private CancellationTokenSource _cts = new CancellationTokenSource();
+
+        // ── 검사 보드 ──
         private readonly InspectBoard _inspectBoard = new InspectBoard();
+
+        // ── 마지막 매칭된 건반 사각형 목록 ──
         private readonly List<Rect> _lastMatchedKeyRects = new List<Rect>();
 
-        public bool IsRunning { get; set; } = false;
+        // ── 상태 플래그 ──
+        public bool IsRunning { get; private set; } = false;
+
+        // ── NG 카운트 (Interlocked로 스레드 안전 처리) ──
         private int _boltNgCount = 0;
         private int _markNgCount = 0;
 
-        public InspWorker() { }
+        // ── UI 폼: 항상 유효한 참조 반환 (null이면 재탐색) ──
+        private CameraForm _cameraForm;
+        private ResultForm _resultForm;
+        private CameraForm CameraForm { get { if (_cameraForm == null) _cameraForm = MainForm.GetDockForm<CameraForm>(); return _cameraForm; } }
+        private ResultForm ResultForm { get { if (_resultForm == null) _resultForm = MainForm.GetDockForm<ResultForm>(); return _resultForm; } }
 
-        //===== [그룹 1] 엔진 및 루프 제어 =====
+        // ── 저장 큐: 별도 전용 스레드에서 순차 처리 ──
+        private readonly BlockingCollection<SaveTask> _saveQueue =
+            new BlockingCollection<SaveTask>(boundedCapacity: 10);
+        private readonly Thread _saveThread;
+
+        // ── 저장 태스크 ──
+        private struct SaveTask
+        {
+            public Mat Image;       // Clone된 Mat
+            public int BoltNg;
+            public int MarkNg;
+            public string FileName;
+        }
+
+        // ────────────────────────────────────────────
+        public InspWorker()
+        {
+            // 저장 전용 백그라운드 스레드 시작
+            _saveThread = new Thread(SaveWorkerLoop)
+            {
+                IsBackground = true,
+                Name = "ImageSaveThread"
+            };
+            _saveThread.Start();
+        }
+
+        // ────────────────────────────────────────────
+        public void Dispose()
+        {
+            _cts.Cancel();
+            _saveQueue.CompleteAdding();
+            _saveThread.Join(2000);
+            _cts.Dispose();
+            _saveQueue.Dispose();
+        }
+
+        // ===== [그룹 1] 엔진 및 루프 제어 =====
 
         public void StartCycleInspectImage()
         {
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
-            Task.Run(() => InspectionLoop(this, _cts.Token));
+
+            // 폼 캐시 초기화 (다음 접근 시 재탐색)
+            _cameraForm = null;
+            _resultForm = null;
+
+            Task.Run(() => InspectionLoop(_cts.Token), _cts.Token);
         }
 
         public void Stop() => _cts.Cancel();
 
-        private void InspectionLoop(InspWorker inspWorker, CancellationToken token)
+        private void InspectionLoop(CancellationToken token)
         {
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
             IsRunning = true;
-            while (!token.IsCancellationRequested)
+            try
             {
-                bool hasMore = Global.Inst.InspStage.OneCycle();
-                if (!hasMore) break;
+                while (!token.IsCancellationRequested)
+                {
+                    bool hasMore = Global.Inst.InspStage.OneCycle();
+                    if (!hasMore) break;
+                }
             }
-            IsRunning = false;
-            Global.Inst.InspStage.SetWorkingState(WorkingState.NONE);
+            finally
+            {
+                IsRunning = false;
+                Global.Inst.InspStage.SetWorkingState(WorkingState.NONE);
+            }
         }
 
-        //===== [그룹 2] 검사 실행 메인 흐름 =====
+        // ===== [그룹 2] 검사 실행 메인 흐름 =====
 
         public List<DrawInspectInfo> RunInspect(out bool isDefect)
         {
             isDefect = false;
             Model curMode = Global.Inst.InspStage.CurModel;
-            List<DrawInspectInfo> finalDisplayList = new List<DrawInspectInfo>();
+            var finalDisplayList = new List<DrawInspectInfo>();
 
             foreach (var window in curMode.InspWindowList)
             {
-                UpdateInspData(window);
+                if (!UpdateInspData(window)) continue;
                 foreach (var algo in window.AlgorithmList)
                 {
                     algo.DoInspect();
@@ -80,46 +140,57 @@ namespace JYVision.Inspect
             return DisplayResult(inspObj, inspType);
         }
 
-        //===== [그룹 3] 건반 위치 탐색 및 보정 =====
+        // ===== [그룹 3] 건반 위치 탐색 및 보정 =====
 
         public List<DrawInspectInfo> RunKeyMatch()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
-            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
+            var displayList = new List<DrawInspectInfo>();
 
             _lastMatchedKeyRects.Clear();
+
             Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
             if (colorMat == null || colorMat.Empty()) return displayList;
 
             var matchedRects = new List<Rect>();
             foreach (var window in curMode.InspWindowList)
             {
-                UpdateInspData(window);
-                var matchAlgo = window.AlgorithmList.OfType<MatchAlgorithm>().FirstOrDefault(a => a.IsUse);
+                if (!UpdateInspData(window)) continue;
+                var matchAlgo = window.AlgorithmList
+                    .OfType<MatchAlgorithm>()
+                    .FirstOrDefault(a => a.IsUse);
                 if (matchAlgo == null) continue;
+
                 matchAlgo.DoInspect();
                 if (matchAlgo.GetResultRect(out List<DrawInspectInfo> results) > 0)
                     matchedRects.AddRange(results.OrderBy(r => r.rect.X).Select(r => r.rect));
             }
 
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
-            var candidateRects = new List<Rect>();
-            foreach (var matched in matchedRects)
-                candidateRects.Add(FindActualKeyRect(colorMat, grayMat, matched));
 
-            if (candidateRects.Count > 0)
+            // 병렬로 실제 건반 영역 탐색 (키 개수가 많을 때 효과적)
+            var candidateRects = new Rect[matchedRects.Count];
+            Parallel.For(0, matchedRects.Count, i =>
+                candidateRects[i] = FindActualKeyRect(colorMat, grayMat, matchedRects[i]));
+
+            if (candidateRects.Length > 0)
             {
                 int maxH = candidateRects.Max(r => r.Height);
                 int minValidH = (int)(maxH * 0.5f);
+                int imgW = colorMat.Width;
+                int imgH = colorMat.Height;
+
                 foreach (var keyRect in candidateRects)
                 {
                     bool clipped = keyRect.X <= 5
-                                || keyRect.Right >= colorMat.Width - 5
+                                || keyRect.Right >= imgW - 5
                                 || keyRect.Y <= 5
-                                || keyRect.Bottom >= colorMat.Height - 5;
+                                || keyRect.Bottom >= imgH - 5;
                     if (!clipped && keyRect.Height < minValidH) continue;
+
                     _lastMatchedKeyRects.Add(keyRect);
-                    displayList.Add(new DrawInspectInfo(keyRect, $"Key H={keyRect.Height}", InspectType.InspNone, DecisionType.Good));
+                    displayList.Add(new DrawInspectInfo(
+                        keyRect, $"Key H={keyRect.Height}", InspectType.InspNone, DecisionType.Good));
                 }
             }
             return displayList;
@@ -130,23 +201,33 @@ namespace JYVision.Inspect
             int imgH = colorMat.Height;
             int imgW = colorMat.Width;
 
+            // 샘플 좌표 사전 계산
             int[] sampleYs = new[] { 0.35f, 0.50f, 0.65f }
-                .Select(r => Math.Max(0, Math.Min(matched.Y + (int)(matched.Height * r), imgH - 1))).ToArray();
+                .Select(r => Math.Max(0, Math.Min(matched.Y + (int)(matched.Height * r), imgH - 1)))
+                .ToArray();
             int[] scanCols = Enumerable.Range(0, 5)
-                .Select(i => Math.Max(0, Math.Min((int)(matched.X + matched.Width * (0.2f + i * 0.15f)), imgW - 1))).ToArray();
+                .Select(i => Math.Max(0, Math.Min(
+                    (int)(matched.X + matched.Width * (0.2f + i * 0.15f)), imgW - 1)))
+                .ToArray();
 
+            // 기준 색상 샘플링 (어두운 픽셀 제외)
             int sumB = 0, sumG = 0, sumR = 0, cnt = 0;
             foreach (int sy in sampleYs)
                 foreach (int x in scanCols)
                 {
-                    Vec3b px = colorMat.At<Vec3b>(sy, x);
+                    var px = colorMat.At<Vec3b>(sy, x);
                     if ((px.Item0 + px.Item1 + px.Item2) / 3 < 40) continue;
                     sumB += px.Item0; sumG += px.Item1; sumR += px.Item2; cnt++;
                 }
 
             if (cnt == 0) return matched;
-            Vec3b refColor = new Vec3b((byte)(sumB / cnt), (byte)(sumG / cnt), (byte)(sumR / cnt));
 
+            var refColor = new Vec3b(
+                (byte)(sumB / cnt),
+                (byte)(sumG / cnt),
+                (byte)(sumR / cnt));
+
+            // 색상 판별 및 허용 오차 결정
             bool isYellow = refColor.Item2 > 150 && refColor.Item1 > 150 && refColor.Item0 < 100;
             bool isRed = refColor.Item2 > 150 && refColor.Item1 < 100 && refColor.Item0 < 100;
             bool isBlue = refColor.Item0 > 100 && refColor.Item2 < 100;
@@ -157,17 +238,24 @@ namespace JYVision.Inspect
             int centerY = matched.Y + (int)(matched.Height * 0.5f);
             int topY = centerY, bottomY = centerY, gap = 0;
 
+            // 위쪽 탐색
             int topLimit = Math.Max(0, matched.Y - (int)(matched.Height * 0.25f));
             for (int y = centerY; y >= topLimit; y--)
             {
-                bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTol)) >= 3;
-                if (match) { topY = y; gap = 0; } else if (++gap > gapLimit) break;
+                bool match = scanCols.Count(
+                    x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTol)) >= 3;
+                if (match) { topY = y; gap = 0; }
+                else if (++gap > gapLimit) break;
             }
+
+            // 아래쪽 탐색
             gap = 0;
             for (int y = centerY; y <= Math.Min(imgH - 1, matched.Bottom); y++)
             {
-                bool match = scanCols.Count(x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTol)) >= 3;
-                if (match) { bottomY = y; gap = 0; } else if (++gap > gapLimit) break;
+                bool match = scanCols.Count(
+                    x => IsColorMatch(colorMat.At<Vec3b>(y, x), refColor, colorTol)) >= 3;
+                if (match) { bottomY = y; gap = 0; }
+                else if (++gap > gapLimit) break;
             }
 
             int margin = Math.Max(10, (int)((bottomY - topY) * 0.05f));
@@ -176,16 +264,17 @@ namespace JYVision.Inspect
             return new Rect(matched.X, finalTop, matched.Width, finalBottom - finalTop);
         }
 
-        private bool IsColorMatch(Vec3b px, Vec3b ref_, int tol) =>
-            Math.Abs(px.Item0 - ref_.Item0) <= tol &&
-            Math.Abs(px.Item1 - ref_.Item1) <= tol &&
-            Math.Abs(px.Item2 - ref_.Item2) <= tol;
+        // 인라인화로 호출 오버헤드 감소
+        private static bool IsColorMatch(Vec3b px, Vec3b r, int tol) =>
+            Math.Abs(px.Item0 - r.Item0) <= tol &&
+            Math.Abs(px.Item1 - r.Item1) <= tol &&
+            Math.Abs(px.Item2 - r.Item2) <= tol;
 
-        //===== [그룹 4] 세부 부품(볼트/각인) 검사 =====
+        // ===== [그룹 4] 세부 부품(볼트/각인) 검사 =====
 
         public List<DrawInspectInfo> RunBoltMark()
         {
-            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
+            var displayList = new List<DrawInspectInfo>();
             if (_lastMatchedKeyRects.Count == 0) return displayList;
 
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
@@ -202,12 +291,13 @@ namespace JYVision.Inspect
                 if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
             }
 
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
-            cameraForm?.ResetDisplay();
-            if (displayList.Count > 0)
-                cameraForm?.AddRect(displayList);
+            // ① ROI 먼저 표시
+            CameraForm?.ResetDisplay();
+            if (displayList.Count > 0) CameraForm?.AddRect(displayList);
 
+            // ② 결과창 업데이트 + 저장 큐에 적재 (비동기)
             SendResultToForm(_boltNgCount, _markNgCount);
+
             return displayList;
         }
 
@@ -216,7 +306,7 @@ namespace JYVision.Inspect
         private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos, List<DrawInspectInfo> displayList)
         {
             float yCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
-            Rect boltRoi = new Rect(
+            var boltRoi = new Rect(
                 key.X + (int)(key.Width * 0.2f),
                 key.Y + (int)(key.Height * (yCenter - 0.12f)),
                 (int)(key.Width * 0.6f),
@@ -224,45 +314,47 @@ namespace JYVision.Inspect
             boltRoi = boltRoi.Intersect(new Rect(0, 0, grayMat.Width, grayMat.Height));
             if (boltRoi.Width <= 0 || boltRoi.Height <= 0) return false;
 
-            using (Mat roiMat = new Mat(grayMat, boltRoi))
+            bool boltFound = false;
+            using (var roiMat = new Mat(grayMat, boltRoi))
             {
-                CircleSegment[] circles = Cv2.HoughCircles(
+                var circles = Cv2.HoughCircles(
                     roiMat, HoughModes.Gradient, 1.0, roiMat.Width,
                     50, 18, roiMat.Width / 6, roiMat.Width / 2);
-                bool boltFound = false;
 
                 if (circles?.Length > 0)
                 {
                     var c = circles[0];
-                    Rect inner = new Rect(
-                        (int)c.Center.X - (int)(c.Radius * 0.6f),
-                        (int)c.Center.Y - (int)(c.Radius * 0.6f),
+                    var inner = new Rect(
+                        (int)(c.Center.X - c.Radius * 0.6f),
+                        (int)(c.Center.Y - c.Radius * 0.6f),
                         (int)(c.Radius * 1.2f),
                         (int)(c.Radius * 1.2f));
                     inner = inner.Intersect(new Rect(0, 0, roiMat.Width, roiMat.Height));
+
                     if (inner.Width > 0 && inner.Height > 0)
                     {
-                        using (Mat innerMat = new Mat(roiMat, inner))
+                        using (var innerMat = new Mat(roiMat, inner))
                         {
                             Cv2.MinMaxLoc(innerMat, out _, out double iMax);
                             Cv2.MeanStdDev(innerMat, out Scalar iMean, out _);
-                            boltFound = (iMax / iMean.Val0) > 1.6 && iMax > 120.0 && iMean.Val0 > 45.0;
+                            boltFound = (iMax / iMean.Val0) > 1.6
+                                     && iMax > 120.0
+                                     && iMean.Val0 > 45.0;
                         }
                     }
                 }
-
-                displayList.Add(new DrawInspectInfo(
-                    boltRoi,
-                    $"{(pos == BoltPosition.Top ? "Top" : "Bot")} Bolt {(boltFound ? "OK" : "NG")}",
-                    InspectType.InspNone,
-                    boltFound ? DecisionType.Good : DecisionType.Defect));
-                return boltFound;
             }
+
+            string label = $"{(pos == BoltPosition.Top ? "Top" : "Bot")} Bolt {(boltFound ? "OK" : "NG")}";
+            displayList.Add(new DrawInspectInfo(
+                boltRoi, label, InspectType.InspNone,
+                boltFound ? DecisionType.Good : DecisionType.Defect));
+            return boltFound;
         }
 
         private bool CheckMark(Mat grayMat, Rect key, List<DrawInspectInfo> displayList)
         {
-            Rect markRoi = new Rect(
+            var markRoi = new Rect(
                 key.X + (int)(key.Width * 0.3f),
                 key.Y + (int)(key.Height * 0.5f),
                 (int)(key.Width * 0.4f),
@@ -270,34 +362,37 @@ namespace JYVision.Inspect
             markRoi = markRoi.Intersect(new Rect(0, 0, grayMat.Width, grayMat.Height));
             if (markRoi.Width <= 0 || markRoi.Height <= 0) return false;
 
-            using (Mat roiMat = new Mat(grayMat, markRoi))
+            bool markFound;
+            using (var roiMat = new Mat(grayMat, markRoi))
             {
                 Cv2.MeanStdDev(roiMat, out _, out Scalar stddev);
-                using (Mat lap = new Mat())
+                using (var lap = new Mat())
                 {
                     Cv2.Laplacian(roiMat, lap, MatType.CV_64F);
                     Cv2.MeanStdDev(lap, out _, out Scalar lapStd);
-                    bool markFound = stddev.Val0 > 3.0 && lapStd.Val0 > 1.5;
-                    displayList.Add(new DrawInspectInfo(
-                        markRoi,
-                        $"Mark {(markFound ? "OK" : "NG")}",
-                        InspectType.InspNone,
-                        markFound ? DecisionType.Good : DecisionType.Defect));
-                    return markFound;
+                    markFound = stddev.Val0 > 3.0 && lapStd.Val0 > 1.5;
                 }
             }
+
+            displayList.Add(new DrawInspectInfo(
+                markRoi,
+                $"Mark {(markFound ? "OK" : "NG")}",
+                InspectType.InspNone,
+                markFound ? DecisionType.Good : DecisionType.Defect));
+            return markFound;
         }
 
-        //===== [그룹 5] 데이터 동기화 및 출력 제어 =====
+        // ===== [그룹 5] 데이터 동기화 및 출력 제어 =====
 
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
             if (_lastMatchedKeyRects.Count == 0) return;
 
-            var cameraForm = MainForm.GetDockForm<CameraForm>();
-            List<DrawInspectInfo> displayList = new List<DrawInspectInfo>();
             Mat grayMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Gray);
             if (grayMat == null) return;
+
+            var displayList = new List<DrawInspectInfo>();
+            int boltNg = 0, markNg = 0;
 
             foreach (Rect key in _lastMatchedKeyRects)
             {
@@ -305,102 +400,105 @@ namespace JYVision.Inspect
                     displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
                 if (showBolt)
                 {
-                    if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) _boltNgCount++;
-                    if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) _boltNgCount++;
+                    if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) boltNg++;
+                    if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) boltNg++;
                 }
                 if (showMark)
-                    if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
+                    if (!CheckMark(grayMat, key, displayList)) markNg++;
             }
 
-            cameraForm?.ResetDisplay();
-            if (displayList.Count > 0) cameraForm?.AddRect(displayList);
+            CameraForm?.ResetDisplay();
+            if (displayList.Count > 0) CameraForm?.AddRect(displayList);
         }
 
-        //------- 결과 폼 전송 + 이미지 파일 저장 -------
+        // ===== [그룹 6] 결과 전송 및 이미지 저장 =====
+
         private void SendResultToForm(int boltNg, int markNg)
         {
-            var resultForm = MainForm.GetDockForm<ResultForm>();
-            if (resultForm == null) return;
+            if (ResultForm == null) return;
 
+            // UI 스레드용 썸네일 생성
             Bitmap captured = null;
-            try
-            {
-                Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
-                if (colorMat != null && !colorMat.Empty())
-                {
-                    Mat bgr;
-                    if (colorMat.Channels() == 1)
-                    {
-                        bgr = new Mat();
-                        Cv2.CvtColor(colorMat, bgr, ColorConversionCodes.GRAY2BGR);
-                    }
-                    else
-                        bgr = colorMat.Clone();
+            Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
 
+            if (colorMat != null && !colorMat.Empty())
+            {
+                try
+                {
+                    Mat bgr = colorMat.Channels() == 1
+                        ? colorMat.CvtColor(ColorConversionCodes.GRAY2BGR)
+                        : colorMat.Clone();
                     using (bgr)
-                    {
                         captured = BitmapConverter.ToBitmap(bgr);
+                }
+                catch { /* 변환 실패 시 null 유지 */ }
+
+                // 저장 큐에 적재 (이미지는 Clone해서 소유권 이전)
+                try
+                {
+                    string lastPath = Global.Inst.InspStage.LastInspectedImagePath;
+                    string fileName = string.IsNullOrEmpty(lastPath)
+                        ? $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png"
+                        : Path.GetFileNameWithoutExtension(lastPath) + ".png";
+
+                    if (!_saveQueue.IsAddingCompleted)
+                    {
+                        // millisecondsTimeout=0 → 큐가 꽉 찼으면 스킵 (검사 블로킹 방지)
+                        _saveQueue.TryAdd(new SaveTask
+                        {
+                            Image = colorMat.Clone(),
+                            BoltNg = boltNg,
+                            MarkNg = markNg,
+                            FileName = fileName
+                        }, 0);
                     }
                 }
+                catch { }
             }
-            catch { }
 
-            resultForm.UpdateNgSummary(boltNg, markNg, captured);
-
-            // 결과 이미지 파일 저장(별도 스레드->비동기)
-            resultForm.UpdateNgSummary(boltNg, markNg, captured);
-
-            Task.Run(() => SaveResultImage(boltNg, markNg));
+            // UI 업데이트는 폼의 Invoke를 통해 안전하게
+            ResultForm.UpdateNgSummary(boltNg, markNg, captured);
         }
 
-        //------- 결과 이미지 저장 -------
-        // D:\Results\OK
-        // D:\Results\NG-BOLT
-        // D:\Results\NG-MARK
-        // D:\Results\NG-BOLT_MARK
-        private void SaveResultImage(int boltNg, int markNg)
+        // ── 저장 전용 스레드: 큐에서 꺼내 순차 저장 ──
+        private void SaveWorkerLoop()
         {
-            try
+            foreach (var task in _saveQueue.GetConsumingEnumerable())
             {
-                Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
-                if (colorMat == null || colorMat.Empty())
+                try
                 {
-                    SLogger.Write("SaveResultImage: 이미지 없음", SLogger.LogType.Error);
-                    return;
+                    using (task.Image)
+                    {
+                        string subFolder;
+                        if (task.BoltNg > 0 && task.MarkNg > 0) subFolder = "NG-BOLT_MARK";
+                        else if (task.BoltNg > 0) subFolder = "NG-BOLT";
+                        else if (task.MarkNg > 0) subFolder = "NG-MARK";
+                        else subFolder = "OK";
+
+                        string saveDir = Path.Combine(@"D:\Results", subFolder);
+                        Directory.CreateDirectory(saveDir);
+
+                        string savePath = Path.Combine(saveDir, task.FileName);
+                        Cv2.ImWrite(savePath, task.Image);
+                        SLogger.Write($"결과 저장: {savePath}");
+                    }
                 }
-
-                // 원본 파일명 (카메라 사용 시 타임스탬프)
-                string lastPath = Global.Inst.InspStage.LastInspectedImagePath;
-                string fileName = string.IsNullOrEmpty(lastPath)
-                                ? $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png"
-                                : Path.GetFileNameWithoutExtension(lastPath) + ".png";
-
-                // 결과에 따라 폴더 결정
-                string subFolder;
-                if (boltNg > 0 && markNg > 0) subFolder = "NG-BOLT_MARK";
-                else if (boltNg > 0) subFolder = "NG-BOLT";
-                else if (markNg > 0) subFolder = "NG-MARK";
-                else subFolder = "OK";
-
-                // 폴더 없으면 자동 생성
-                string saveDir = Path.Combine(@"D:\Results", subFolder);
-                Directory.CreateDirectory(saveDir);
-
-                string savePath = Path.Combine(saveDir, fileName);
-                Cv2.ImWrite(savePath, colorMat);
-
-                SLogger.Write($"결과 저장: {savePath}");
-            }
-            catch (Exception ex)
-            {
-                SLogger.Write($"결과 이미지 저장 실패: {ex.Message}", SLogger.LogType.Error);
+                catch (Exception ex)
+                {
+                    SLogger.Write($"결과 이미지 저장 실패: {ex.Message}", SLogger.LogType.Error);
+                }
             }
         }
+
+        // ===== [그룹 7] 공통 헬퍼 =====
 
         public bool UpdateInspData(InspWindow inspWindow)
         {
             if (inspWindow == null) return false;
+
+            // 패턴 학습 (IsLearned 미지원 시 매 사이클 호출)
             inspWindow.PatternLearn();
+
             foreach (var algo in inspWindow.AlgorithmList)
             {
                 algo.TeachRect = algo.InspRect = inspWindow.WindowArea;
@@ -412,13 +510,14 @@ namespace JYVision.Inspect
         private bool DisplayResult(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) return false;
-            List<DrawInspectInfo> total = new List<DrawInspectInfo>();
+            var total = new List<DrawInspectInfo>();
             foreach (var algo in inspObj.AlgorithmList)
             {
                 if (inspType != InspectType.InspNone && algo.InspectType != inspType) continue;
-                if (algo.GetResultRect(out List<DrawInspectInfo> area) > 0) total.AddRange(area);
+                if (algo.GetResultRect(out List<DrawInspectInfo> area) > 0)
+                    total.AddRange(area);
             }
-            if (total.Count > 0) MainForm.GetDockForm<CameraForm>()?.AddRect(total);
+            if (total.Count > 0) CameraForm?.AddRect(total);
             return true;
         }
     }

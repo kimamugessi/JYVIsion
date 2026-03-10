@@ -20,8 +20,8 @@ namespace JYVision.UIControl
 
     public partial class PatternImageEditor : UserControl
     {
-        private const int THUMBNAIL_WIDTH = 100;
-        private const int THUMBNAIL_HEIGHT = 100;
+        private const int THUMBNAIL_WIDTH = 150;
+        private const int THUMBNAIL_HEIGHT = 150;
 
         private readonly ImageList _imageListThumb;      // holds the generated thumbnails
 

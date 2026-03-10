@@ -56,18 +56,22 @@
             this.grpMatch.Controls.Add(this.txtExtendX);
             this.grpMatch.Controls.Add(this.lbX);
             this.grpMatch.Controls.Add(this.lbExtent);
-            this.grpMatch.Location = new System.Drawing.Point(6, 35);
+            this.grpMatch.Location = new System.Drawing.Point(7, 41);
+            this.grpMatch.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.grpMatch.Name = "grpMatch";
-            this.grpMatch.Size = new System.Drawing.Size(294, 103);
+            this.grpMatch.Padding = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.grpMatch.Size = new System.Drawing.Size(269, 120);
             this.grpMatch.TabIndex = 5;
             this.grpMatch.TabStop = false;
             // 
             // chkInvertResult
             // 
             this.chkInvertResult.AutoSize = true;
-            this.chkInvertResult.Location = new System.Drawing.Point(13, 79);
+            this.chkInvertResult.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.chkInvertResult.Location = new System.Drawing.Point(15, 92);
+            this.chkInvertResult.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.chkInvertResult.Name = "chkInvertResult";
-            this.chkInvertResult.Size = new System.Drawing.Size(76, 16);
+            this.chkInvertResult.Size = new System.Drawing.Size(88, 23);
             this.chkInvertResult.TabIndex = 3;
             this.chkInvertResult.Text = "결과 반전";
             this.chkInvertResult.UseVisualStyleBackColor = true;
@@ -76,48 +80,57 @@
             // lbScore
             // 
             this.lbScore.AutoSize = true;
-            this.lbScore.Location = new System.Drawing.Point(6, 50);
+            this.lbScore.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbScore.Location = new System.Drawing.Point(7, 58);
             this.lbScore.Name = "lbScore";
-            this.lbScore.Size = new System.Drawing.Size(65, 12);
+            this.lbScore.Size = new System.Drawing.Size(79, 19);
             this.lbScore.TabIndex = 2;
             this.lbScore.Text = "매칭스코어";
             // 
             // txtExtendY
             // 
-            this.txtExtendY.Location = new System.Drawing.Point(160, 17);
+            this.txtExtendY.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtExtendY.Location = new System.Drawing.Point(183, 20);
+            this.txtExtendY.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtExtendY.Name = "txtExtendY";
-            this.txtExtendY.Size = new System.Drawing.Size(50, 21);
+            this.txtExtendY.Size = new System.Drawing.Size(57, 26);
             this.txtExtendY.TabIndex = 1;
             // 
             // txtScore
             // 
-            this.txtScore.Location = new System.Drawing.Point(86, 47);
+            this.txtScore.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtScore.Location = new System.Drawing.Point(98, 55);
+            this.txtScore.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtScore.Name = "txtScore";
-            this.txtScore.Size = new System.Drawing.Size(50, 21);
+            this.txtScore.Size = new System.Drawing.Size(57, 26);
             this.txtScore.TabIndex = 1;
             // 
             // txtExtendX
             // 
-            this.txtExtendX.Location = new System.Drawing.Point(86, 17);
+            this.txtExtendX.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtExtendX.Location = new System.Drawing.Point(98, 20);
+            this.txtExtendX.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.txtExtendX.Name = "txtExtendX";
-            this.txtExtendX.Size = new System.Drawing.Size(50, 21);
+            this.txtExtendX.Size = new System.Drawing.Size(57, 26);
             this.txtExtendX.TabIndex = 1;
             // 
             // lbX
             // 
             this.lbX.AutoSize = true;
-            this.lbX.Location = new System.Drawing.Point(142, 23);
+            this.lbX.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbX.Location = new System.Drawing.Point(162, 27);
             this.lbX.Name = "lbX";
-            this.lbX.Size = new System.Drawing.Size(12, 12);
+            this.lbX.Size = new System.Drawing.Size(15, 19);
             this.lbX.TabIndex = 0;
             this.lbX.Text = "x";
             // 
             // lbExtent
             // 
             this.lbExtent.AutoSize = true;
-            this.lbExtent.Location = new System.Drawing.Point(6, 26);
+            this.lbExtent.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbExtent.Location = new System.Drawing.Point(7, 30);
             this.lbExtent.Name = "lbExtent";
-            this.lbExtent.Size = new System.Drawing.Size(53, 12);
+            this.lbExtent.Size = new System.Drawing.Size(65, 19);
             this.lbExtent.TabIndex = 0;
             this.lbExtent.Text = "확장영역";
             // 
@@ -126,9 +139,11 @@
             this.chkUse.AutoSize = true;
             this.chkUse.Checked = true;
             this.chkUse.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkUse.Location = new System.Drawing.Point(14, 13);
+            this.chkUse.Font = new System.Drawing.Font("Segoe UI", 9.163636F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.chkUse.Location = new System.Drawing.Point(16, 15);
+            this.chkUse.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.chkUse.Name = "chkUse";
-            this.chkUse.Size = new System.Drawing.Size(48, 16);
+            this.chkUse.Size = new System.Drawing.Size(56, 23);
             this.chkUse.TabIndex = 6;
             this.chkUse.Text = "검사";
             this.chkUse.UseVisualStyleBackColor = true;
@@ -136,20 +151,23 @@
             // 
             // patternImageEditor
             // 
-            this.patternImageEditor.Location = new System.Drawing.Point(6, 144);
+            this.patternImageEditor.Font = new System.Drawing.Font("굴림", 9.163636F);
+            this.patternImageEditor.Location = new System.Drawing.Point(7, 170);
+            this.patternImageEditor.Margin = new System.Windows.Forms.Padding(3, 5, 3, 5);
             this.patternImageEditor.Name = "patternImageEditor";
-            this.patternImageEditor.Size = new System.Drawing.Size(297, 161);
+            this.patternImageEditor.Size = new System.Drawing.Size(269, 149);
             this.patternImageEditor.TabIndex = 4;
             // 
             // MatchInspProp
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.patternImageEditor);
             this.Controls.Add(this.grpMatch);
             this.Controls.Add(this.chkUse);
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "MatchInspProp";
-            this.Size = new System.Drawing.Size(312, 315);
+            this.Size = new System.Drawing.Size(357, 368);
             this.grpMatch.ResumeLayout(false);
             this.grpMatch.PerformLayout();
             this.ResumeLayout(false);

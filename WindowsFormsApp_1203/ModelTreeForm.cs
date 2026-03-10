@@ -22,8 +22,8 @@ namespace JYVision
         {
             InitializeComponent();
 
-            //초기 트리 노트의 기본값은 "Root"
-            tvModelTree.Nodes.Add("Root");
+            //초기 트리 노트의 기본값은 "ROI"
+            tvModelTree.Nodes.Add("ROI");
 
             // 컨텍스트 메뉴 초기화
             _contextMenu = new ContextMenuStrip();
@@ -37,11 +37,11 @@ namespace JYVision
 
         private void tvModelTree_MouseDown(object sender, MouseEventArgs e)
         {
-            //Root 노드에서 마우스 오른쪽 버튼 클릭 시에, 팝업 메뉴 생성
+            //ROI 노드에서 마우스 오른쪽 버튼 클릭 시에, 팝업 메뉴 생성
             if (e.Button == MouseButtons.Right)
             {
                 TreeNode clickedNode = tvModelTree.GetNodeAt(e.X, e.Y);
-                if (clickedNode != null && clickedNode.Text == "Root")
+                if (clickedNode != null && clickedNode.Text == "ROI")
                 {
                     tvModelTree.SelectedNode = clickedNode;
                     _contextMenu.Show(tvModelTree, e.Location);
@@ -74,7 +74,7 @@ namespace JYVision
         public void UpdateDiagramEntity()
         {
             tvModelTree.Nodes.Clear();
-            TreeNode rootNode = tvModelTree.Nodes.Add("Root");
+            TreeNode ROINode = tvModelTree.Nodes.Add("ROI");
 
             Model model = Global.Inst.InspStage.CurModel;
             List<InspWindow> windowList = model.InspWindowList;
@@ -89,7 +89,7 @@ namespace JYVision
                 string uid = window.UID;
 
                 TreeNode node = new TreeNode(uid);
-                rootNode.Nodes.Add(node);
+                ROINode.Nodes.Add(node);
             }
 
             tvModelTree.ExpandAll();

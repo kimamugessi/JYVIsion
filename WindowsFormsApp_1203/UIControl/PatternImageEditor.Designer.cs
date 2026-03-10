@@ -41,9 +41,10 @@
             // 
             this.btnUpdate.ImageIndex = 0;
             this.btnUpdate.ImageList = this.toolbarImageList;
-            this.btnUpdate.Location = new System.Drawing.Point(3, 3);
+            this.btnUpdate.Location = new System.Drawing.Point(3, 4);
+            this.btnUpdate.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnUpdate.Name = "btnUpdate";
-            this.btnUpdate.Size = new System.Drawing.Size(37, 32);
+            this.btnUpdate.Size = new System.Drawing.Size(42, 37);
             this.btnUpdate.TabIndex = 0;
             this.btnUpdate.UseVisualStyleBackColor = true;
             this.btnUpdate.Click += new System.EventHandler(this.Update_Click);
@@ -63,9 +64,10 @@
             // 
             this.btnAdd.ImageIndex = 3;
             this.btnAdd.ImageList = this.toolbarImageList;
-            this.btnAdd.Location = new System.Drawing.Point(3, 41);
+            this.btnAdd.Location = new System.Drawing.Point(3, 48);
+            this.btnAdd.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnAdd.Name = "btnAdd";
-            this.btnAdd.Size = new System.Drawing.Size(37, 33);
+            this.btnAdd.Size = new System.Drawing.Size(42, 38);
             this.btnAdd.TabIndex = 0;
             this.btnAdd.UseVisualStyleBackColor = true;
             this.btnAdd.Click += new System.EventHandler(this.Add_Click);
@@ -74,9 +76,10 @@
             // 
             this.btnDel.ImageIndex = 5;
             this.btnDel.ImageList = this.toolbarImageList;
-            this.btnDel.Location = new System.Drawing.Point(3, 80);
+            this.btnDel.Location = new System.Drawing.Point(3, 93);
+            this.btnDel.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.btnDel.Name = "btnDel";
-            this.btnDel.Size = new System.Drawing.Size(37, 33);
+            this.btnDel.Size = new System.Drawing.Size(42, 38);
             this.btnDel.TabIndex = 0;
             this.btnDel.UseVisualStyleBackColor = true;
             this.btnDel.Click += new System.EventHandler(this.Del_Click);
@@ -86,23 +89,25 @@
             this.listThumbnail.Alignment = System.Windows.Forms.ListViewAlignment.Left;
             this.listThumbnail.Dock = System.Windows.Forms.DockStyle.Right;
             this.listThumbnail.HideSelection = false;
-            this.listThumbnail.Location = new System.Drawing.Point(46, 0);
+            this.listThumbnail.Location = new System.Drawing.Point(50, 0);
+            this.listThumbnail.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.listThumbnail.MultiSelect = false;
             this.listThumbnail.Name = "listThumbnail";
-            this.listThumbnail.Size = new System.Drawing.Size(249, 132);
+            this.listThumbnail.Size = new System.Drawing.Size(220, 150);
             this.listThumbnail.TabIndex = 1;
             this.listThumbnail.UseCompatibleStateImageBehavior = false;
             // 
             // PatternImageEditor
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.listThumbnail);
             this.Controls.Add(this.btnDel);
             this.Controls.Add(this.btnAdd);
             this.Controls.Add(this.btnUpdate);
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "PatternImageEditor";
-            this.Size = new System.Drawing.Size(295, 132);
+            this.Size = new System.Drawing.Size(270, 150);
             this.ResumeLayout(false);
 
         }
