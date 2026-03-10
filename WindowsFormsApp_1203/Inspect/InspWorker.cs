@@ -30,7 +30,7 @@ namespace JYVision.Inspect
         // ── 상태 플래그 ──
         public bool IsRunning { get; private set; } = false;
 
-        // ── NG 카운트 (Interlocked로 스레드 안전 처리) ──
+        // ── NG 카운트 ──
         private int _boltNgCount = 0;
         private int _markNgCount = 0;
 
@@ -55,9 +55,9 @@ namespace JYVision.Inspect
         }
 
         // ────────────────────────────────────────────
+        //------- 생성자: 이미지 저장 전용 백그라운드 스레드 구동 -------
         public InspWorker()
         {
-            // 저장 전용 백그라운드 스레드 시작
             _saveThread = new Thread(SaveWorkerLoop)
             {
                 IsBackground = true,
@@ -67,6 +67,7 @@ namespace JYVision.Inspect
         }
 
         // ────────────────────────────────────────────
+        //------- 자원 해제 및 동작 중인 스레드/큐 안전 종료 -------
         public void Dispose()
         {
             _cts.Cancel();
@@ -78,9 +79,14 @@ namespace JYVision.Inspect
 
         // ===== [그룹 1] 엔진 및 루프 제어 =====
 
+        //------- 연속 검사 사이클 시작 (비동기 루프 실행) -------
         public void StartCycleInspectImage()
         {
-            _cts?.Cancel();
+            if (_cts != null)
+            {
+                _cts.Cancel();
+                _cts.Dispose(); // 기존 토큰 리소스 해제 (메모리 누수 방지)
+            }
             _cts = new CancellationTokenSource();
 
             // UI 스레드에서 미리 탐색 (백그라운드 스레드 첫 접근 지연 방지)
@@ -90,8 +96,10 @@ namespace JYVision.Inspect
             Task.Run(() => InspectionLoop(_cts.Token), _cts.Token);
         }
 
+        //------- 진행 중인 검사 루프 즉시 중지 -------
         public void Stop() => _cts.Cancel();
 
+        //------- 실제 검사 메인 루프 (중지 신호가 올 때까지 무한 반복) -------
         private void InspectionLoop(CancellationToken token)
         {
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
@@ -113,6 +121,7 @@ namespace JYVision.Inspect
 
         // ===== [그룹 2] 검사 실행 메인 흐름 =====
 
+        //------- 등록된 모든 검사 알고리즘을 순차적으로 실행하고 결과 수합 -------
         public List<DrawInspectInfo> RunInspect(out bool isDefect)
         {
             isDefect = false;
@@ -132,6 +141,7 @@ namespace JYVision.Inspect
             return finalDisplayList;
         }
 
+        //------- 특정 영역(Window)과 타입만 지정해서 단일 검사 실행 -------
         public bool TryInspect(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) { RunInspect(out _); return true; }
@@ -142,6 +152,7 @@ namespace JYVision.Inspect
 
         // ===== [그룹 3] 건반 위치 탐색 및 보정 =====
 
+        //------- 전체 이미지에서 건반 영역(ROI)들을 찾아내고 크기 보정 -------
         public List<DrawInspectInfo> RunKeyMatch()
         {
             Model curMode = Global.Inst.InspStage.CurModel;
@@ -196,6 +207,7 @@ namespace JYVision.Inspect
             return displayList;
         }
 
+        //------- 매칭된 대략적인 좌표를 바탕으로 픽셀 색상을 분석해 실제 건반 경계 박스 추출 -------
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
             int imgH = colorMat.Height;
@@ -264,7 +276,7 @@ namespace JYVision.Inspect
             return new Rect(matched.X, finalTop, matched.Width, finalBottom - finalTop);
         }
 
-        // 인라인화로 호출 오버헤드 감소
+        //------- 타겟 픽셀이 기준 색상 오차 범위 안에 있는지 확인 (성능 위해 인라인화) -------
         private static bool IsColorMatch(Vec3b px, Vec3b r, int tol) =>
             Math.Abs(px.Item0 - r.Item0) <= tol &&
             Math.Abs(px.Item1 - r.Item1) <= tol &&
@@ -272,6 +284,7 @@ namespace JYVision.Inspect
 
         // ===== [그룹 4] 세부 부품(볼트/각인) 검사 =====
 
+        //------- 찾은 건반 영역들을 돌면서 내부의 볼트/마킹 정상 여부 일괄 검사 -------
         public List<DrawInspectInfo> RunBoltMark()
         {
             var displayList = new List<DrawInspectInfo>();
@@ -285,17 +298,11 @@ namespace JYVision.Inspect
 
             foreach (Rect key in _lastMatchedKeyRects)
             {
-                //displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
                 if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) _boltNgCount++;
                 if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) _boltNgCount++;
                 if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
             }
 
-            // ① ROI 먼저 표시
-            //CameraForm?.ResetDisplay();
-            //if (displayList.Count > 0) CameraForm?.AddRect(displayList);
-
-            // ② 결과창 업데이트 + 저장 큐에 적재 (비동기)
             SendResultToForm(_boltNgCount, _markNgCount);
 
             return displayList;
@@ -303,6 +310,7 @@ namespace JYVision.Inspect
 
         private enum BoltPosition { Top, Bottom }
 
+        //------- 해당 건반 위치(상/하)의 볼트 유무 및 퀄리티(명암비) 검사 -------
         private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos, List<DrawInspectInfo> displayList)
         {
             float yCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
@@ -354,6 +362,7 @@ namespace JYVision.Inspect
             return boltFound;
         }
 
+        //------- 건반 중앙의 마킹(각인) 선명도 및 존재 여부 검사 -------
         private bool CheckMark(Mat grayMat, Rect key, List<DrawInspectInfo> displayList)
         {
             var markRoi = new Rect(
@@ -389,6 +398,7 @@ namespace JYVision.Inspect
 
         // ===== [그룹 5] 데이터 동기화 및 출력 제어 =====
 
+        //------- UI 체크 옵션에 따라 건반/볼트/마킹 검사 결과를 화면에 그리기 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
             if (_lastMatchedKeyRects.Count == 0) return;
@@ -418,6 +428,7 @@ namespace JYVision.Inspect
 
         // ===== [그룹 6] 결과 전송 및 이미지 저장 =====
 
+        //------- 메인 UI에 NG 결과를 업데이트하고, 비동기 큐에 저장할 이미지 데이터 밀어넣기 -------
         private void SendResultToForm(int boltNg, int markNg)
         {
             if (ResultForm == null) return;
@@ -448,14 +459,20 @@ namespace JYVision.Inspect
 
                     if (!_saveQueue.IsAddingCompleted)
                     {
-                        // millisecondsTimeout=0 → 큐가 꽉 찼으면 스킵 (검사 블로킹 방지)
-                        _saveQueue.TryAdd(new SaveTask
+                        Mat cloneMat = colorMat.Clone();
+                        bool isAdded = _saveQueue.TryAdd(new SaveTask
                         {
-                            Image = colorMat.Clone(),
+                            Image = cloneMat,
                             BoltNg = boltNg,
                             MarkNg = markNg,
                             FileName = fileName
                         }, 0);
+
+                        // 큐가 꽉 차서 저장이 스킵된 경우 복사된 이미지 리소스 뱉어내기
+                        if (!isAdded)
+                        {
+                            cloneMat?.Dispose();
+                        }
                     }
                 }
                 catch { }
@@ -463,10 +480,9 @@ namespace JYVision.Inspect
 
             // UI 업데이트
             ResultForm.UpdateNgSummary(boltNg, markNg, captured);
-
         }
 
-        // ── 저장 전용 스레드: 큐에서 꺼내 순차 저장 ──
+        //------- 큐에 쌓인 검사 결과물들을 하나씩 꺼내서 디스크(하드)에 저장하는 백그라운드 태스크 -------
         private void SaveWorkerLoop()
         {
             foreach (var task in _saveQueue.GetConsumingEnumerable())
@@ -498,6 +514,7 @@ namespace JYVision.Inspect
 
         // ===== [그룹 7] 공통 헬퍼 =====
 
+        //------- 검사 시작 전, 버퍼 이미지를 알고리즘에 밀어넣고 필요한 패턴 학습 처리 -------
         public bool UpdateInspData(InspWindow inspWindow)
         {
             if (inspWindow == null) return false;
@@ -513,6 +530,7 @@ namespace JYVision.Inspect
             return true;
         }
 
+        //------- 검사가 완료된 객체의 결과를 UI(CameraForm) 위에 박스 형태로 출력 -------
         private bool DisplayResult(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) return false;

@@ -50,7 +50,7 @@
             this.imageViewer.Size = new System.Drawing.Size(640, 350);
             this.imageViewer.TabIndex = 0;
             this.imageViewer.WorkingState = "";
-            this.imageViewer.Load += new System.EventHandler(this.imageViewer_Load);
+            //this.imageViewer.Load += new System.EventHandler(this.imageViewer_Load);
             // 
             // CameraForm
             // 

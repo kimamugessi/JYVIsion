@@ -244,9 +244,6 @@
     <Compile Include="Teach\InspWindow.cs" />
     <Compile Include="Teach\InspWindowFactory.cs" />
     <Compile Include="Teach\Model.cs" />
-    <Compile Include="TrendChartForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="UIControl\ImageViewCtrl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -264,12 +261,6 @@
     </Compile>
     <Compile Include="UIControl\PatternImageEditor.Designer.cs">
       <DependentUpon>PatternImageEditor.cs</DependentUpon>
-    </Compile>
-    <Compile Include="UIControl\RangeTrackbar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="UIControl\RangeTrackbar.Designer.cs">
-      <DependentUpon>RangeTrackbar.cs</DependentUpon>
     </Compile>
     <Compile Include="Util\BitmapExtension.cs" />
     <Compile Include="Util\ImageFileSorter.cs" />
@@ -343,9 +334,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="StatisticForm.resx">
       <DependentUpon>StatisticForm.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TrendChartForm.resx">
-      <DependentUpon>TrendChartForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="UIControl\ImageViewCtrl.resx">
       <DependentUpon>ImageViewCtrl.cs</DependentUpon>

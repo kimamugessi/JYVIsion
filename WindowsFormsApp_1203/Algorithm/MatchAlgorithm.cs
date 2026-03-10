@@ -31,7 +31,9 @@ namespace JYVision.Algorithm
         public bool InvertResult { get; set; } = false;
         public int OutScore { get; set; } = 0; // 검출된 결과 중 최고 점수
         public List<Point> OutPoints { get; set; } = new List<Point>(); // 검출된 중심점 좌표들
-        public int MatchCount { get; set; } = 1; // 찾고자 하는 대상의 개수
+
+        public int MatchCount { get; set; } = 2; // 찾고자 하는 대상의 개수 (기본값 2개)
+        public int ColumnTolerance { get; set; } = 100; // 동일한 열(Column)로 판단할 X거리 허용치
 
         public MatchAlgorithm()
         {
@@ -49,6 +51,13 @@ namespace JYVision.Algorithm
             cloneAlgo.ExtSize = this.ExtSize;
             cloneAlgo.InvertResult = this.InvertResult;
             cloneAlgo.MatchCount = this.MatchCount;
+            cloneAlgo.ColumnTolerance = this.ColumnTolerance;
+
+            foreach (var img in this._templateImages)
+            {
+                cloneAlgo.AddTemplateImage(img);
+            }
+
             return cloneAlgo;
         }
 
@@ -60,6 +69,14 @@ namespace JYVision.Algorithm
             this.ExtSize = matchAlgo.ExtSize;
             this.InvertResult = matchAlgo.InvertResult;
             this.MatchCount = matchAlgo.MatchCount;
+            this.ColumnTolerance = matchAlgo.ColumnTolerance;
+
+            this.ResetTemplateImages();
+            foreach (var img in matchAlgo.GetTemplateImages())
+            {
+                this.AddTemplateImage(img);
+            }
+
             return true;
         }
 
@@ -69,7 +86,14 @@ namespace JYVision.Algorithm
         public void AddTemplateImage(Mat templateImage) => _templateImages.Add(templateImage.Clone());
 
         //------- 템플릿 리스트 초기화 -------
-        public void ResetTemplateImages() => _templateImages.Clear();
+        public void ResetTemplateImages()
+        {
+            foreach (var mat in _templateImages)
+            {
+                mat?.Dispose(); // 메모리 누수 방지
+            }
+            _templateImages.Clear();
+        }
 
         //------- 등록된 템플릿 목록 반환 -------
         public List<Mat> GetTemplateImages() => _templateImages;
@@ -81,36 +105,37 @@ namespace JYVision.Algorithm
         {
             if (_srcImage == null || _templateImages.Count == 0) return false;
 
-            // 이전 검사 결과 데이터 싹 비우기 (잔상 방지)
+            // 이전 검사 결과 데이터 비우기
             ResetResult();
             OutPoints.Clear();
             MatchResults.Clear();
             OutScore = 0;
 
-            Mat template = _templateImages[0]; // 첫 번째 등록된 마스터 이미지를 기준으로 사용
+            Mat template = _templateImages[0]; // 첫 번째 마스터 이미지 기준
             if (template == null || template.Empty()) return false;
 
             using (Mat res = new Mat())
             {
-                // OpenCV의 MatchTemplate 실행 (정규화된 상관계수 매칭 방식 사용)
+                // OpenCV의 MatchTemplate 실행 (정규화된 상관계수 매칭 방식)
                 Cv2.MatchTemplate(_srcImage, template, res, TemplateMatchModes.CCoeffNormed);
 
-                float matchThreshold = MatchScore / 100.0f; // 0.0 ~ 1.0 사이 값으로 변환
+                float matchThreshold = MatchScore / 100.0f; // 0.0 ~ 1.0 사이 값 변환
                 int halfWidth = template.Width / 2;
                 int halfHeight = template.Height / 2;
 
-                // 다중 검출 루프 (가장 높은 점수부터 차례대로 찾음)
+                // 다중 검출 루프
                 while (true)
                 {
                     double minVal, maxVal;
                     Point minLoc, maxLoc;
-                    // 매칭 결과 맵에서 최대값(MaxVal)과 그 위치(MaxLoc)를 찾음
+
+                    // 매칭 결과 맵에서 최대값(MaxVal)과 위치 찾기
                     Cv2.MinMaxLoc(res, out minVal, out maxVal, out minLoc, out maxLoc);
 
-                    // 최고 점수가 기준치보다 낮으면 루프 종료
+                    // 기준치 미달 시 종료
                     if (maxVal < matchThreshold) break;
 
-                    // 결과 데이터 저장 (검출 영역의 정중앙 좌표 계산)
+                    // 결과 데이터 저장
                     Point center = new Point(maxLoc.X + halfWidth, maxLoc.Y + halfHeight);
                     MatchResult resData = new MatchResult { Center = center, Score = (int)(maxVal * 100) };
 
@@ -118,18 +143,19 @@ namespace JYVision.Algorithm
                     OutPoints.Add(resData.Center);
                     if (resData.Score > OutScore) OutScore = resData.Score;
 
-                    // [중요] 중복 검출 방지: 이미 찾은 지점 주변을 0(검정)으로 덮어버림
+                    // 중복 검출 방지: 찾은 지점 주변을 0(검정)으로 마스킹
                     Cv2.Rectangle(res, new Rect(maxLoc.X - halfWidth, maxLoc.Y - halfHeight, template.Width, template.Height), new Scalar(0), -1);
 
-                    // 무한 루프 방지를 위한 최대 검출 수 제한
-                    if (MatchResults.Count > 50) break;
+                    // 최대 검출 개수를 초과하면 루프 종료 (안전장치)
+                    if (MatchResults.Count >= MatchCount * 5) break;
                 }
             }
 
             IsInspected = true;
-            // 볼트 검사 특화: 검출된 볼트가 정확히 2개일 때만 정상으로 판단
-            IsDefect = (OutPoints.Count != 2);
+            // 설정한 타겟 개수(MatchCount)와 일치할 때만 정상 판단
+            IsDefect = (OutPoints.Count != MatchCount);
             ResultString.Add($"검출 수: {OutPoints.Count}, 최고 점수: {OutScore}%");
+
             return true;
         }
 
@@ -149,65 +175,6 @@ namespace JYVision.Algorithm
                 resultArea.Add(new DrawInspectInfo(new Rect(res.Center.X - w / 2, res.Center.Y - h / 2, w, h), $"{res.Score}%", InspectType.InspMatch, color));
             }
             return resultArea.Count;
-        }
-
-        //===== [그룹 5] 보정 및 데이터 활용 유틸리티 =====
-
-        //------- 두 볼트의 중심점과 검사 영역 간의 오차 계산 -------
-        public Point GetOffset()
-        {
-            // 볼트가 정확히 2개 검출되었을 때만 보정값 계산
-            if (IsInspected && OutPoints.Count == 2)
-            {
-                // 두 볼트 사이의 정중앙 지점 계산
-                Point centerOfBolts = new Point((OutPoints[0].X + OutPoints[1].X) / 2, (OutPoints[0].Y + OutPoints[1].Y) / 2);
-                // 기준 영역(InspRect)의 시작점으로부터 얼마나 떨어져 있는지 반환
-                return new Point(centerOfBolts.X - InspRect.X, centerOfBolts.Y - InspRect.Y);
-            }
-            return new Point(0, 0);
-        }
-
-        //------- 상하 볼트 쌍을 묶어 하나의 ROI 리스트로 반환 -------
-        public List<Rect> GetBoltPairROIs()
-        {
-            var pairROIs = new List<Rect>();
-            if (!IsInspected || MatchResults.Count < 2) return pairROIs;
-
-            // 1. X축 좌표 기준으로 정렬 (왼쪽 라인 볼트부터)
-            var sortedByX = MatchResults.OrderBy(b => b.Center.X).ToList();
-            int xTolerance = 100; // 동일한 열(Column)로 판단할 X거리 허용치
-            var xGroups = new List<List<MatchResult>>();
-
-            // 2. 같은 라인(X좌표가 비슷한) 볼트끼리 그룹핑
-            foreach (var res in sortedByX)
-            {
-                var targetGroup = xGroups.FirstOrDefault(g => Math.Abs(g[0].Center.X - res.Center.X) < xTolerance);
-                if (targetGroup == null) xGroups.Add(new List<MatchResult> { res });
-                else targetGroup.Add(res);
-            }
-
-            int w = _templateImages[0].Width;
-            int h = _templateImages[0].Height;
-
-            // 3. 각 그룹 내에서 상하(Y좌표) 볼트를 짝지어 하나의 영역으로 통합
-            foreach (var group in xGroups)
-            {
-                var sortedInGroup = group.OrderBy(b => b.Center.Y).ToList();
-                for (int i = 0; i < sortedInGroup.Count - 1; i += 2)
-                {
-                    var b1 = sortedInGroup[i];   // 위쪽 볼트
-                    var b2 = sortedInGroup[i + 1]; // 아래쪽 볼트
-
-                    int minX = Math.Min(b1.Center.X, b2.Center.X) - w / 2;
-                    int maxX = Math.Max(b1.Center.X, b2.Center.X) + w / 2;
-                    int minY = b1.Center.Y - h / 2;
-                    int maxY = b2.Center.Y + h / 2;
-
-                    // 두 볼트를 모두 포함하는 커다란 사각형 ROI 생성
-                    pairROIs.Add(new Rect(minX, minY, maxX - minX, maxY - minY));
-                }
-            }
-            return pairROIs;
         }
     }
 }

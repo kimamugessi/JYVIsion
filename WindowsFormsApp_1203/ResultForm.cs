@@ -238,6 +238,18 @@ namespace JYVision
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 7.5f)
             };
+
+            var btnSaveChart = new Button
+            {
+                Text = "저장",
+                Location = new Point(175, 3), // Clear 버튼 옆으로 위치 조정
+                Size = new Size(48, 22),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 7.5f)
+            };
+            btnSaveChart.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
+            btnSaveChart.Click += BtnSaveChart_Click;
+            trendBottom.Controls.AddRange(new Control[] { _cmbRange, btnTrendClear, btnSaveChart });
             btnTrendClear.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
             btnTrendClear.Click += (s, e) => ClearTrend();
             trendBottom.Controls.AddRange(new Control[] { _cmbRange, btnTrendClear });
@@ -297,11 +309,19 @@ namespace JYVision
 
         private void OnChartPaint(object sender, System.Windows.Forms.PaintEventArgs e)
         {
-            var g = e.Graphics;
+            // 분리한 그리기 함수를 호출 (현재 패널 크기 전달)
+            DrawTrendChart(e.Graphics, _chartPanel.Width, _chartPanel.Height);
+        }
+
+        // ===== 실제 차트 그리는 엔진 (분리됨) =====
+        private void DrawTrendChart(Graphics g, int W, int H)
+        {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            int W = _chartPanel.Width, H = _chartPanel.Height;
+            // 배경색 채우기 (저장할 때 투명해지지 않도록)
+            g.Clear(Color.White);
+
             int ml = 36, mr = 10, mt = 14, mb = 28;
             var plot = new Rectangle(ml, mt, W - ml - mr, H - mt - mb);
 
@@ -374,7 +394,6 @@ namespace JYVision
                 DrawLine(g, plot, view, n, yMax, denom, r => r.BoltNg + r.MarkNg, ColTotal, true);
             }
         }
-
         private void DrawLine(Graphics g, Rectangle plot, List<TrendRecord> view,
             int n, int yMax, int denom, Func<TrendRecord, int> getValue, Color color, bool dashed)
         {
@@ -399,7 +418,57 @@ namespace JYVision
             _trendRecords.Clear();
             _chartPanel?.Invalidate();
         }
+        // ===== 트렌드 그래프 이미지 저장 =====
+        // ===== 트렌드 그래프 이미지 저장 (고해상도) =====
+        private void BtnSaveChart_Click(object sender, EventArgs e)
+        {
+            if (_trendRecords.Count == 0)
+            {
+                MessageBox.Show("저장할 데이터가 없습니다.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
+            using (SaveFileDialog sfd = new SaveFileDialog())
+            {
+                sfd.Title = "고해상도 트렌드 그래프 저장";
+                sfd.Filter = "PNG 이미지 (*.png)|*.png|JPEG 이미지 (*.jpg)|*.jpg";
+                sfd.FileName = $"TrendGraph_{DateTime.Now:yyyyMMdd_HHmmss}.png";
+
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        // ⭐ 해상도 배율 설정 (3 = 가로세로 3배, 면적 9배의 고화질)
+                        int scale = 3;
+
+                        // 1. 배율만큼 큰 사이즈의 고해상도 도화지 생성
+                        using (Bitmap bmp = new Bitmap(_chartPanel.Width * scale, _chartPanel.Height * scale))
+                        using (Graphics g = Graphics.FromImage(bmp))
+                        {
+                            // 2. 도화지의 눈금을 배율만큼 확대 (이 코드가 핵심입니다!)
+                            g.ScaleTransform(scale, scale);
+
+                            // 3. 차트 그리기 엔진을 호출하여 확대된 도화지 위에 그리기
+                            // (크기 값은 원래 패널 크기를 넘겨야 비율이 안 깨집니다)
+                            DrawTrendChart(g, _chartPanel.Width, _chartPanel.Height);
+
+                            // 4. 확장자에 맞춰 이미지 포맷 결정 및 저장
+                            var format = sfd.FileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ?
+                                System.Drawing.Imaging.ImageFormat.Jpeg :
+                                System.Drawing.Imaging.ImageFormat.Png;
+
+                            bmp.Save(sfd.FileName, format);
+                        }
+
+                        MessageBox.Show($"트렌드 그래프가 성공적으로 저장되었습니다.\n(해상도: {_chartPanel.Width * scale} x {_chartPanel.Height * scale})", "저장 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"이미지 저장 중 오류가 발생했습니다.\n{ex.Message}", "저장 실패", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
         // ===== 기존 메서드 =====
         private void OnRowSelected(object sender, EventArgs e)
         {

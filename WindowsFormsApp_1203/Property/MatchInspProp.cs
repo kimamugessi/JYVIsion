@@ -23,6 +23,7 @@ namespace JYVision.Property
         public event EventHandler<EventArgs> PropertyChanged; // 속성 변경 시 외부(MainForm 등)에 알리기 위한 이벤트
         private MatchAlgorithm _matchAlgo = null; // 연결된 알고리즘 객체
 
+        //------- UI 컨트롤 초기화 및 기본 이벤트 연동 -------
         public MatchInspProp()
         {
             InitializeComponent();
@@ -38,14 +39,14 @@ namespace JYVision.Property
 
         //===== [그룹 2] 알고리즘 데이터 연동 (Logic -> UI) =====
 
-        //------- 외부에서 알고리즘 객체 주입 -------
+        //------- 외부(MainForm 등)에서 선택된 알고리즘 객체를 UI 컨트롤에 연결 -------
         public void SetAlgorithm(MatchAlgorithm matchAlgo)
         {
             _matchAlgo = matchAlgo;
             SetProperty(); // 객체 받자마자 화면에 값 뿌려줌
         }
 
-        //------- 알고리즘 데이터를 UI 컨트롤에 표시 -------
+        //------- 연결된 알고리즘의 현재 설정값들을 읽어와서 UI 화면에 그리기 -------
         public void SetProperty()
         {
             if (_matchAlgo is null) return;
@@ -63,51 +64,53 @@ namespace JYVision.Property
 
             // 3. 등록된 템플릿(마스터) 이미지들을 섬네일로 표시
             List<Mat> templateImages = _matchAlgo.GetTemplateImages();
-            if (templateImages.Count > 0)
+            List<Bitmap> teachImages = new List<Bitmap>();
+
+            // 마지막 남은 이미지 1개를 삭제했을 때 잔상이 남지 않도록 무조건 썸네일 갱신 호출
+            foreach (var teachImage in templateImages)
             {
-                List<Bitmap> teachImages = new List<Bitmap>();
-
-                foreach (var teachImage in templateImages)
-                {
-                    // OpenCV Mat 타입을 WinForms용 Bitmap으로 변환하여 리스트 구성
-                    Bitmap bmpImage = BitmapConverter.ToBitmap(teachImage);
-                    teachImages.Add(bmpImage);
-                }
-
-                // UI 컨트롤에 섬네일 리스트 전달하여 그리기
-                patternImageEditor.DrawThumbnails(teachImages);
+                // UI 출력을 위해 OpenCV Mat 타입을 WinForms용 Bitmap으로 변환
+                Bitmap bmpImage = BitmapConverter.ToBitmap(teachImage);
+                teachImages.Add(bmpImage);
             }
+
+            // UI 컨트롤에 섬네일 리스트 전달하여 그리기 (이 안에서 기존 Bitmap Dispose 처리 필수)
+            patternImageEditor.DrawThumbnails(teachImages);
         }
 
         //===== [그룹 3] UI 변경 사항 반영 (UI -> Logic) =====
 
-        //------- 텍스트 박스 입력 값 검증 및 업데이트 -------
+        //------- 사용자가 텍스트박스에 값을 입력/수정했을 때 알고리즘 객체에 반영 -------
         private void OnUpdateValue(object sender, EventArgs e)
         {
             if (_matchAlgo == null) return;
 
             OpenCvSharp.Size extendSize = _matchAlgo.ExtSize;
+            int score;
 
-            // 문자열 입력을 정수로 변환 (실패 시 경고창 띄우고 중단)
-            if (!int.TryParse(txtExtendX.Text, out extendSize.Width))
+            // 입력값 검증: 숫자가 아니거나 음수면 에러 메시지 띄우고 기존 정상 값으로 원복
+            if (!int.TryParse(txtExtendX.Text, out extendSize.Width) || extendSize.Width < 0)
             {
-                MessageBox.Show("숫자만 입력 가능합니다.");
+                MessageBox.Show("0 이상의 숫자만 입력 가능합니다.");
+                txtExtendX.Text = _matchAlgo.ExtSize.Width.ToString();
                 return;
             }
 
-            if (!int.TryParse(txtExtendY.Text, out extendSize.Height))
+            if (!int.TryParse(txtExtendY.Text, out extendSize.Height) || extendSize.Height < 0)
             {
-                MessageBox.Show("숫자만 입력 가능합니다.");
+                MessageBox.Show("0 이상의 숫자만 입력 가능합니다.");
+                txtExtendY.Text = _matchAlgo.ExtSize.Height.ToString();
                 return;
             }
 
-            if (!int.TryParse(txtScore.Text, out int score))
+            if (!int.TryParse(txtScore.Text, out score) || score < 0 || score > 100)
             {
-                MessageBox.Show("숫자만 입력 가능합니다.");
+                MessageBox.Show("0~100 사이의 점수만 입력 가능합니다.");
+                txtScore.Text = _matchAlgo.MatchScore.ToString();
                 return;
             }
 
-            // 알고리즘 객체에 최종 값 반영
+            // 알고리즘 객체에 최종 검증된 값 반영
             _matchAlgo.ExtSize = extendSize;
             _matchAlgo.MatchScore = score;
 
@@ -115,7 +118,7 @@ namespace JYVision.Property
             PropertyChanged?.Invoke(this, null);
         }
 
-        //------- 알고리즘 사용 여부 토글 -------
+        //------- 매칭 검사 사용 여부 체크박스 변경 이벤트 -------
         private void chkUse_CheckedChanged(object sender, EventArgs e)
         {
             bool useMatch = chkUse.Checked;
@@ -128,7 +131,7 @@ namespace JYVision.Property
                 _matchAlgo.IsUse = useMatch;
         }
 
-        //------- 결과 반전 체크박스 제어 -------
+        //------- 검사 결과(양불) 반전 체크박스 변경 이벤트 -------
         private void chkInvertResult_CheckedChanged(object sender, EventArgs e)
         {
             if (_matchAlgo is null) return;
@@ -137,7 +140,7 @@ namespace JYVision.Property
 
         //===== [그룹 4] 패턴 이미지 관리 핸들러 =====
 
-        //------- 패턴 이미지 편집 버튼(추가/수정/삭제) 처리 -------
+        //------- 템플릿(마스터) 이미지 추가/수정/삭제 버튼 클릭 이벤트 -------
         private void PatternImage_ButtonChanged(object sender, PatternImageEventArgs e)
         {
             int index = e.Index; // 클릭된 이미지의 인덱스
@@ -158,6 +161,9 @@ namespace JYVision.Property
                     Global.Inst.InspStage.DelTeachingImage(index);
                     break;
             }
+
+            // 이미지 조작 후 UI 썸네일 즉각 갱신
+            SetProperty();
         }
     }
 }
