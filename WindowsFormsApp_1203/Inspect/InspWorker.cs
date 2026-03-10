@@ -513,7 +513,7 @@ namespace JYVision.Inspect
         }
 
         // ===== [그룹 7] 공통 헬퍼 =====
-
+        
         //------- 검사 시작 전, 버퍼 이미지를 알고리즘에 밀어넣고 필요한 패턴 학습 처리 -------
         public bool UpdateInspData(InspWindow inspWindow)
         {

@@ -203,10 +203,10 @@ namespace JYVision
                 BackColor = Color.Transparent,
                 Text = text
             };
-            _lblBoltNg = MakeLabel("Bolt NG  : -", 20, Color.OrangeRed);
-            _lblMarkNg = MakeLabel("Mark NG  : -", 50, Color.OrangeRed);
-            _lblTotalNg = MakeLabel("Total NG : -", 80, Color.Yellow);
-            _lblStatus = MakeLabel("판  정   : -", 110, Color.White);
+            _lblBoltNg = MakeLabel("Bolt NG  : -", 10, Color.OrangeRed);
+            _lblMarkNg = MakeLabel("Mark NG  : -", 40, Color.OrangeRed);
+            _lblTotalNg = MakeLabel("Total NG : -", 70, Color.Yellow);
+            _lblStatus = MakeLabel("판  정   : -", 100, Color.White);
             labelPanel.Controls.AddRange(new Control[] { _lblBoltNg, _lblMarkNg, _lblTotalNg, _lblStatus });
 
             _detailPanel.Controls.Add(labelPanel);
