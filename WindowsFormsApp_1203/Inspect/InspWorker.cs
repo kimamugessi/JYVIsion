@@ -83,9 +83,9 @@ namespace JYVision.Inspect
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
 
-            // 폼 캐시 초기화 (다음 접근 시 재탐색)
-            _cameraForm = null;
-            _resultForm = null;
+            // UI 스레드에서 미리 탐색 (백그라운드 스레드 첫 접근 지연 방지)
+            _cameraForm = MainForm.GetDockForm<CameraForm>();
+            _resultForm = MainForm.GetDockForm<ResultForm>();
 
             Task.Run(() => InspectionLoop(_cts.Token), _cts.Token);
         }
@@ -456,8 +456,9 @@ namespace JYVision.Inspect
                 catch { }
             }
 
-            // UI 업데이트는 폼의 Invoke를 통해 안전하게
+            // UI 업데이트
             ResultForm.UpdateNgSummary(boltNg, markNg, captured);
+
         }
 
         // ── 저장 전용 스레드: 큐에서 꺼내 순차 저장 ──

@@ -8,7 +8,6 @@ using WeifenLuo.WinFormsUI.Docking;
 
 namespace JYVision.Inspect
 {
-    // ===== 불량률 트렌드 차트 폼 (순수 GDI+ - 외부 참조 없음) =====
     public class TrendChartForm : DockContent
     {
         private struct InspRecord
@@ -29,13 +28,15 @@ namespace JYVision.Inspect
         private ComboBox _cmbRange;
         private Button _btnClear;
 
-        private static readonly Color ColBg = Color.FromArgb(28, 28, 34);
-        private static readonly Color ColPlotBg = Color.FromArgb(20, 20, 26);
-        private static readonly Color ColGrid = Color.FromArgb(48, 48, 60);
-        private static readonly Color ColBolt = Color.FromArgb(255, 100, 60);
-        private static readonly Color ColMark = Color.FromArgb(80, 160, 255);
-        private static readonly Color ColTotal = Color.FromArgb(255, 200, 50);
-        private static readonly Color ColText = Color.FromArgb(160, 160, 170);
+        // VS 속성창 스타일 색상
+        private static readonly Color ColBg = Color.FromArgb(243, 243, 243);
+        private static readonly Color ColHeader = Color.FromArgb(0, 122, 204); // VS 파란색
+        private static readonly Color ColBolt = Color.FromArgb(200, 50, 20);
+        private static readonly Color ColMark = Color.FromArgb(0, 100, 200);
+        private static readonly Color ColTotal = Color.FromArgb(180, 120, 0);
+        private static readonly Color ColGrid = Color.FromArgb(210, 210, 215);
+        private static readonly Color ColText = Color.FromArgb(50, 50, 50);
+        private static readonly Color ColPlotBg = Color.White;
 
         private static readonly int[] RangeLimits = { 20, 50, 100, 200, 0 };
 
@@ -47,115 +48,167 @@ namespace JYVision.Inspect
         private void InitializeUI()
         {
             Text = "불량률 트렌드";
-            Size = new Size(800, 500);
-            MinimumSize = new Size(600, 380);
             BackColor = ColBg;
-            ForeColor = Color.White;
-            Font = new Font("맑은 고딕", 9f);
+            ForeColor = ColText;
+            Font = new Font("맑은 고딕", 8.5f);
+            DockAreas = DockAreas.DockLeft | DockAreas.DockRight |
+                          DockAreas.DockBottom | DockAreas.Float | DockAreas.Document;
 
-            // 상단 요약 패널
-            var topPanel = new Panel
+            // ── 헤더 바 ──
+            var header = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 64,
-                BackColor = Color.FromArgb(18, 18, 24)
+                Height = 24,
+                BackColor = ColHeader
             };
-            _lblTotal = MakeStat("검사: 0", Color.FromArgb(170, 170, 180), 10);
-            _lblBoltNg = MakeStat("Bolt NG: 0", ColBolt, 170);
-            _lblMarkNg = MakeStat("Mark NG: 0", ColMark, 330);
-            _lblNgRate = MakeStat("NG율: 0.0%", ColTotal, 490);
-            topPanel.Controls.AddRange(new Control[] { _lblTotal, _lblBoltNg, _lblMarkNg, _lblNgRate });
+            header.Controls.Add(new Label
+            {
+                Text = "▶ 불량률 트렌드",
+                ForeColor = Color.White,
+                Font = new Font("맑은 고딕", 8.5f, FontStyle.Bold),
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(6, 0, 0, 0)
+            });
 
-            // 하단 컨트롤 바
+            // ── 요약 그리드 (속성창 스타일) ──
+            var grid = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 72,
+                ColumnCount = 2,
+                RowCount = 4,
+                BackColor = Color.White,
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.Single
+            };
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+            for (int i = 0; i < 4; i++)
+                grid.RowStyles.Add(new RowStyle(SizeType.Percent, 25f));
+
+            _lblTotal = MakeGridCell("검사", "0 건", ColText);
+            _lblBoltNg = MakeGridCell("Bolt NG", "0", ColBolt);
+            _lblMarkNg = MakeGridCell("Mark NG", "0", ColMark);
+            _lblNgRate = MakeGridCell("NG율", "0.0 %", ColTotal);
+
+            // 왼쪽: 항목명, 오른쪽: 값
+            grid.Controls.Add(MakeKeyLabel("검사"), 0, 0);
+            grid.Controls.Add(_lblTotal, 1, 0);
+            grid.Controls.Add(MakeKeyLabel("Bolt NG"), 0, 1);
+            grid.Controls.Add(_lblBoltNg, 1, 1);
+            grid.Controls.Add(MakeKeyLabel("Mark NG"), 0, 2);
+            grid.Controls.Add(_lblMarkNg, 1, 2);
+            grid.Controls.Add(MakeKeyLabel("NG율"), 0, 3);
+            grid.Controls.Add(_lblNgRate, 1, 3);
+
+            // ── 하단 컨트롤 바 ──
             var bottomPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 36,
-                BackColor = Color.FromArgb(18, 18, 24)
+                Height = 28,
+                BackColor = ColBg
             };
             bottomPanel.Controls.Add(new Label
             {
-                Text = "표시 범위:",
-                ForeColor = ColText,
+                Text = "범위:",
                 AutoSize = true,
-                Location = new Point(10, 10)
+                ForeColor = ColText,
+                Location = new Point(4, 7)
             });
             _cmbRange = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(82, 6),
-                Width = 90,
+                Location = new Point(38, 4),
+                Width = 80,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(45, 45, 58),
-                ForeColor = Color.White
+                Font = new Font("맑은 고딕", 8f)
             };
-            _cmbRange.Items.AddRange(new object[] { "최근 20건", "최근 50건", "최근 100건", "최근 200건", "전체" });
+            _cmbRange.Items.AddRange(new object[] { "20건", "50건", "100건", "200건", "전체" });
             _cmbRange.SelectedIndex = 1;
             _cmbRange.SelectedIndexChanged += (s, e) => _chartPanel.Invalidate();
 
             _btnClear = new Button
             {
                 Text = "초기화",
-                Location = new Point(182, 4),
-                Size = new Size(62, 26),
+                Location = new Point(124, 3),
+                Size = new Size(48, 22),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(55, 55, 70),
-                ForeColor = Color.White,
+                Font = new Font("맑은 고딕", 8f),
                 Cursor = Cursors.Hand
             };
-            _btnClear.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 100);
+            _btnClear.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
             _btnClear.Click += (s, e) => ClearData();
             bottomPanel.Controls.AddRange(new Control[] { _cmbRange, _btnClear });
 
-            // 차트 패널 (GDI+ 직접 렌더링)
+            // ── 차트 패널 ──
             _chartPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = ColPlotBg
+                BackColor = ColPlotBg,
+                BorderStyle = BorderStyle.None
             };
             _chartPanel.Paint += OnChartPaint;
 
+            // ── 구분선 ──
+            var sep = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = ColGrid };
+
             Controls.Add(_chartPanel);
-            Controls.Add(topPanel);
+            Controls.Add(sep);
+            Controls.Add(grid);
+            Controls.Add(header);
             Controls.Add(bottomPanel);
         }
 
-        private Label MakeStat(string text, Color color, int x)
+        private Label MakeKeyLabel(string text)
         {
             return new Label
             {
                 Text = text,
-                AutoSize = false,
-                Size = new Size(155, 64),
-                Location = new Point(x, 0),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = ColText,
+                BackColor = Color.FromArgb(248, 248, 248),
+                Font = new Font("맑은 고딕", 8f),
+                Padding = new Padding(4, 0, 0, 0),
+                Margin = new Padding(0)
+            };
+        }
+
+        private Label MakeGridCell(string key, string val, Color color)
+        {
+            return new Label
+            {
+                Text = val,
+                Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = color,
-                Font = new Font("맑은 고딕", 12f, FontStyle.Bold)
+                BackColor = Color.White,
+                Font = new Font("맑은 고딕", 8.5f, FontStyle.Bold),
+                Margin = new Padding(0)
             };
         }
 
         // ===== GDI+ 차트 렌더링 =====
         private void OnChartPaint(object sender, PaintEventArgs e)
         {
-            Graphics g = e.Graphics;
+            var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
             int W = _chartPanel.Width;
             int H = _chartPanel.Height;
+            int ml = 36, mr = 10, mt = 14, mb = 28;
+            var plot = new Rectangle(ml, mt, W - ml - mr, H - mt - mb);
 
-            int ml = 52, mr = 20, mt = 18, mb = 38;
-            Rectangle plot = new Rectangle(ml, mt, W - ml - mr, H - mt - mb);
+            g.FillRectangle(new SolidBrush(ColPlotBg), plot);
+            g.DrawRectangle(new Pen(ColGrid, 1), plot);
 
             int limit = RangeLimits[_cmbRange.SelectedIndex];
             var view = (limit == 0 || _records.Count <= limit)
                 ? _records.ToList()
                 : _records.Skip(_records.Count - limit).ToList();
-
             int n = view.Count;
-
-            g.FillRectangle(new SolidBrush(ColPlotBg), plot);
-            g.DrawRectangle(new Pen(ColGrid, 1), plot);
 
             if (n == 0)
             {
@@ -165,8 +218,8 @@ namespace JYVision.Inspect
                     LineAlignment = StringAlignment.Center
                 };
                 g.DrawString("검사 데이터 없음",
-                    new Font("맑은 고딕", 11f),
-                    new SolidBrush(ColGrid),
+                    new Font("맑은 고딕", 9f),
+                    new SolidBrush(Color.FromArgb(180, 180, 180)),
                     new RectangleF(plot.X, plot.Y, plot.Width, plot.Height), sf);
                 return;
             }
@@ -176,148 +229,107 @@ namespace JYVision.Inspect
             int yMax = (int)(Math.Ceiling(maxVal * 1.3));
             if (yMax < 3) yMax = 3;
 
-            var labelFont = new Font("맑은 고딕", 7.5f);
-            var labelBrush = new SolidBrush(ColText);
-            var gridPen = new Pen(ColGrid, 1) { DashStyle = DashStyle.Dash };
+            var lf = new Font("맑은 고딕", 7f);
+            var lb = new SolidBrush(ColText);
+            var gPen = new Pen(ColGrid, 1) { DashStyle = DashStyle.Dash };
 
-            // Y 그리드 + 레이블
-            int gridCount = 4;
-            for (int i = 0; i <= gridCount; i++)
+            // Y 그리드
+            for (int i = 0; i <= 4; i++)
             {
-                float fy = plot.Bottom - plot.Height * i / (float)gridCount;
-                int val = (int)Math.Round(yMax * i / (double)gridCount);
-                g.DrawLine(gridPen, plot.Left, fy, plot.Right, fy);
+                float fy = plot.Bottom - plot.Height * i / 4f;
+                int val = (int)Math.Round(yMax * i / 4.0);
+                g.DrawLine(gPen, plot.Left, fy, plot.Right, fy);
                 string lbl = val.ToString();
-                SizeF sz = g.MeasureString(lbl, labelFont);
-                g.DrawString(lbl, labelFont, labelBrush,
-                    plot.Left - sz.Width - 3, fy - sz.Height / 2);
+                SizeF sz = g.MeasureString(lbl, lf);
+                g.DrawString(lbl, lf, lb, plot.Left - sz.Width - 2, fy - sz.Height / 2);
             }
 
-            // X 레이블 (최대 10개)
-            int xStep = Math.Max(1, n / 10);
+            // X 레이블
+            int xStep = Math.Max(1, n / 8);
+            int denom = n - 1 == 0 ? 1 : n - 1;
             for (int i = 0; i < n; i += xStep)
             {
-                int denom = (n - 1 == 0) ? 1 : n - 1;
                 float fx = plot.Left + plot.Width * i / (float)denom;
                 string lbl = view[i].Index.ToString();
-                SizeF sz = g.MeasureString(lbl, labelFont);
-                g.DrawString(lbl, labelFont, labelBrush,
-                    fx - sz.Width / 2, plot.Bottom + 4);
-                g.DrawLine(new Pen(ColGrid, 1), fx, plot.Bottom, fx, plot.Bottom + 3);
+                SizeF sz = g.MeasureString(lbl, lf);
+                g.DrawString(lbl, lf, lb, fx - sz.Width / 2, plot.Bottom + 3);
             }
 
             // 범례
             DrawLegend(g, plot);
 
-            // 라인 시리즈
+            // 라인
             if (n >= 2)
             {
-                DrawLineSeries(g, plot, view, n, yMax, r => r.BoltNg, ColBolt, false);
-                DrawLineSeries(g, plot, view, n, yMax, r => r.MarkNg, ColMark, false);
-                DrawLineSeries(g, plot, view, n, yMax, r => r.BoltNg + r.MarkNg, ColTotal, true);
-            }
-            else
-            {
-                DrawDot(g, plot, view[0].BoltNg, yMax, ColBolt);
-                DrawDot(g, plot, view[0].MarkNg, yMax, ColMark);
-                DrawDot(g, plot, view[0].BoltNg + view[0].MarkNg, yMax, ColTotal);
+                DrawLine(g, plot, view, n, yMax, r => r.BoltNg, ColBolt, false);
+                DrawLine(g, plot, view, n, yMax, r => r.MarkNg, ColMark, false);
+                DrawLine(g, plot, view, n, yMax, r => r.BoltNg + r.MarkNg, ColTotal, true);
             }
 
             // 연속 NG 경고
-            DrawConsecutiveWarning(g, plot, view, n, yMax);
-
-            // 축 제목
-            g.DrawString("검사 번호",
-                new Font("맑은 고딕", 8f), labelBrush,
-                plot.Left + plot.Width / 2 - 20, plot.Bottom + 20);
+            DrawWarning(g, plot, view, n, yMax, denom);
         }
 
-        private void DrawLineSeries(Graphics g, Rectangle plot,
-            List<InspRecord> view, int n, int yMax,
-            Func<InspRecord, int> getValue, Color color, bool dashed)
+        private void DrawLine(Graphics g, Rectangle plot, List<InspRecord> view,
+            int n, int yMax, Func<InspRecord, int> getValue, Color color, bool dashed)
         {
-            var pen = new Pen(color, 2f);
+            int denom = n - 1 == 0 ? 1 : n - 1;
+            var pen = new Pen(color, 1.5f);
             if (dashed) pen.DashStyle = DashStyle.Dash;
 
-            PointF[] pts = new PointF[n];
-            int denom = (n - 1 == 0) ? 1 : n - 1;
+            var pts = new PointF[n];
             for (int i = 0; i < n; i++)
-            {
-                float fx = plot.Left + plot.Width * i / (float)denom;
-                float fy = plot.Bottom - plot.Height * getValue(view[i]) / (float)yMax;
-                pts[i] = new PointF(fx, fy);
-            }
+                pts[i] = new PointF(
+                    plot.Left + plot.Width * i / (float)denom,
+                    plot.Bottom - plot.Height * getValue(view[i]) / (float)yMax);
 
             g.DrawLines(pen, pts);
-
             if (!dashed)
             {
-                var brush = new SolidBrush(color);
-                var innerPen = new Pen(Color.FromArgb(40, 40, 50), 1);
+                var br = new SolidBrush(color);
                 foreach (var pt in pts)
-                {
-                    g.FillEllipse(brush, pt.X - 3, pt.Y - 3, 6, 6);
-                    g.DrawEllipse(innerPen, pt.X - 3, pt.Y - 3, 6, 6);
-                }
+                    g.FillEllipse(br, pt.X - 2.5f, pt.Y - 2.5f, 5, 5);
             }
-        }
-
-        private void DrawDot(Graphics g, Rectangle plot, int val, int yMax, Color color)
-        {
-            float fx = plot.Left + plot.Width * 0.5f;
-            float fy = plot.Bottom - plot.Height * val / (float)yMax;
-            g.FillEllipse(new SolidBrush(color), fx - 4, fy - 4, 8, 8);
         }
 
         private void DrawLegend(Graphics g, Rectangle plot)
         {
             var items = new[]
             {
-                Tuple.Create("■ Bolt NG",   ColBolt),
-                Tuple.Create("◆ Mark NG",   ColMark),
-                Tuple.Create("-- Total NG", ColTotal)
+                Tuple.Create("■ Bolt", ColBolt),
+                Tuple.Create("■ Mark", ColMark),
+                Tuple.Create("-- Total", ColTotal)
             };
-            var lf = new Font("맑은 고딕", 8f);
-            float lx = plot.Left + 8;
-            float ly = plot.Top + 6;
+            var lf = new Font("맑은 고딕", 7f);
+            float lx = plot.Left + 4;
+            float ly = plot.Top + 3;
             foreach (var item in items)
             {
                 SizeF sz = g.MeasureString(item.Item1, lf);
-                g.FillRectangle(new SolidBrush(Color.FromArgb(120, 0, 0, 0)),
-                    lx - 2, ly - 1, sz.Width + 4, sz.Height + 2);
                 g.DrawString(item.Item1, lf, new SolidBrush(item.Item2), lx, ly);
-                lx += sz.Width + 14;
+                lx += sz.Width + 8;
             }
         }
 
-        private void DrawConsecutiveWarning(Graphics g, Rectangle plot,
-            List<InspRecord> view, int n, int yMax)
+        private void DrawWarning(Graphics g, Rectangle plot,
+            List<InspRecord> view, int n, int yMax, int denom)
         {
-            const int threshold = 5;
             int streak = 0;
-            var warnFont = new Font("맑은 고딕", 7.5f, FontStyle.Bold);
-            var warnBrush = new SolidBrush(Color.White);
-            var warnBg = new SolidBrush(Color.FromArgb(200, 60, 40));
-            int denom = (n - 1 == 0) ? 1 : n - 1;
-
+            var wf = new Font("맑은 고딕", 7f, FontStyle.Bold);
             for (int i = 0; i < n; i++)
             {
                 var r = view[i];
-                if (r.BoltNg > 0 || r.MarkNg > 0) streak++;
-                else streak = 0;
-
-                if (streak >= threshold)
+                streak = (r.BoltNg > 0 || r.MarkNg > 0) ? streak + 1 : 0;
+                if (streak >= 5)
                 {
                     float fx = plot.Left + plot.Width * i / (float)denom;
-                    int tot = r.BoltNg + r.MarkNg;
-                    float fy = plot.Bottom - plot.Height * tot / (float)yMax;
-                    string msg = string.Format("연속 NG {0}건!", streak);
-                    SizeF sz = g.MeasureString(msg, warnFont);
-                    float bx = Math.Min(fx + 4, plot.Right - sz.Width - 4);
-                    float by = Math.Max(fy - sz.Height - 8, plot.Top + 2);
-
-                    g.FillRectangle(warnBg, bx - 2, by - 1, sz.Width + 4, sz.Height + 2);
-                    g.DrawString(msg, warnFont, warnBrush, bx, by);
+                    float fy = plot.Bottom - plot.Height * (r.BoltNg + r.MarkNg) / (float)yMax;
+                    string msg = string.Format("연속 {0}건!", streak);
+                    SizeF sz = g.MeasureString(msg, wf);
+                    float bx = Math.Min(fx + 2, plot.Right - sz.Width - 2);
+                    float by = Math.Max(fy - sz.Height - 4, plot.Top + 2);
+                    g.FillRectangle(new SolidBrush(Color.FromArgb(200, 60, 40)), bx - 2, by - 1, sz.Width + 4, sz.Height + 2);
+                    g.DrawString(msg, wf, new SolidBrush(Color.White), bx, by);
                     break;
                 }
             }
@@ -326,49 +338,40 @@ namespace JYVision.Inspect
         // ===== 외부 호출 =====
         public void AddRecord(int boltNg, int markNg)
         {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => AddRecord(boltNg, markNg)));
-                return;
-            }
+            if (InvokeRequired) { BeginInvoke(new Action(() => AddRecord(boltNg, markNg))); return; }
             _totalCount++;
-            _records.Add(new InspRecord
-            {
-                Index = _totalCount,
-                BoltNg = boltNg,
-                MarkNg = markNg
-            });
+            _records.Add(new InspRecord { Index = _totalCount, BoltNg = boltNg, MarkNg = markNg });
             UpdateSummary();
             _chartPanel.Invalidate();
         }
 
         private void UpdateSummary()
         {
-            int totalBolt = _records.Sum(r => r.BoltNg);
-            int totalMark = _records.Sum(r => r.MarkNg);
-            int ngCount = _records.Count(r => r.BoltNg > 0 || r.MarkNg > 0);
-            double ngRate = _records.Count == 0 ? 0.0 : ngCount * 100.0 / _records.Count;
+            int tb = _records.Sum(r => r.BoltNg);
+            int tm = _records.Sum(r => r.MarkNg);
+            int ng = _records.Count(r => r.BoltNg > 0 || r.MarkNg > 0);
+            double rate = _records.Count == 0 ? 0.0 : ng * 100.0 / _records.Count;
 
-            _lblTotal.Text = string.Format("검사: {0}", _records.Count);
-            _lblBoltNg.Text = string.Format("Bolt NG: {0}", totalBolt);
-            _lblMarkNg.Text = string.Format("Mark NG: {0}", totalMark);
-            _lblNgRate.Text = string.Format("NG율: {0:F1}%", ngRate);
+            _lblTotal.Text = string.Format("{0} 건", _records.Count);
+            _lblBoltNg.Text = string.Format("{0}", tb);
+            _lblMarkNg.Text = string.Format("{0}", tm);
+            _lblNgRate.Text = string.Format("{0:F1} %", rate);
 
-            _lblNgRate.ForeColor = ngRate >= 20.0
-                ? Color.FromArgb(255, 80, 60)
-                : ngRate >= 10.0
-                    ? Color.FromArgb(255, 200, 50)
-                    : Color.FromArgb(100, 220, 120);
+            _lblNgRate.ForeColor = rate >= 20.0
+                ? Color.FromArgb(200, 40, 20)
+                : rate >= 10.0
+                    ? Color.FromArgb(180, 120, 0)
+                    : Color.FromArgb(0, 140, 60);
         }
 
         private void ClearData()
         {
             _records.Clear();
             _totalCount = 0;
-            _lblTotal.Text = "검사: 0";
-            _lblBoltNg.Text = "Bolt NG: 0";
-            _lblMarkNg.Text = "Mark NG: 0";
-            _lblNgRate.Text = "NG율: 0.0%";
+            _lblTotal.Text = "0 건";
+            _lblBoltNg.Text = "0";
+            _lblMarkNg.Text = "0";
+            _lblNgRate.Text = "0.0 %";
             _lblNgRate.ForeColor = ColTotal;
             _chartPanel.Invalidate();
         }

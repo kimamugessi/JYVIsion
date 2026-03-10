@@ -86,74 +86,8 @@ namespace JYVision
         }
 
         //===== [그룹 4] 이미지 전처리 및 특수 기능 =====
-
-        //------- 이미지 선명화 및 에지 강조 (알고리즘 보조용) -------
-        private void edge_Click(object sender, EventArgs e)
-        {
-            var stage = Global.Inst.InspStage;
-            eImageChannel channel = eImageChannel.Color;
-
-            // 현재 버퍼에 있는 이미지를 가져와 처리 시작
-            using (Mat src = stage.GetMat(0, channel))
-            {
-                if (src == null || src.Empty()) return;
-
-                using (Mat enhanced = new Mat())
-                {
-                    // 1. 대비(Contrast) 및 밝기 조정
-                    // 알파(1.2): 대비 강화로 글자와 배경 차이 확대 / 베타(-20): 노이즈 억제를 위한 밝기 감소
-                    src.ConvertTo(enhanced, -1, 1.2, -20);
-
-                    // 2. 언샤프 마스크(Unsharp Mask)로 경계선 강조
-                    // 가우시안 블러를 적용한 이미지와 원본의 가중치 합을 통해 테두리를 날카롭게 만듦
-                    using (Mat blurred = new Mat())
-                    {
-                        Cv2.GaussianBlur(enhanced, blurred, new OpenCvSharp.Size(5, 5), 1.5);
-                        Cv2.AddWeighted(enhanced, 1.5, blurred, -0.5, 0, enhanced);
-                    }
-
-                    // 3. 미세한 점 노이즈 제거
-                    // 중앙값 블러를 적용해 매칭률을 떨어뜨리는 지저분한 픽셀들을 정리
-                    Cv2.MedianBlur(enhanced, enhanced, 3);
-
-                    // 4. 처리된 결과를 시스템 메모리 버퍼(IntPtr)에 직접 주입
-                    // 비전 시스템의 무결성을 위해 OpenCV Mat 데이터를 Stride 정렬된 버퍼로 복사
-                    IntPtr destPtr = stage.ImageSpace.GetnspectionBufferPtr(0);
-                    if (destPtr != IntPtr.Zero)
-                    {
-                        int width = enhanced.Width;
-                        int height = enhanced.Height;
-                        int bytesPerPixel = (int)enhanced.ElemSize();
-                        int alignedWidth = (width + 3) / 4 * 4; // 4바이트 정렬 계산
-                        int destStride = alignedWidth * bytesPerPixel;
-
-                        // 행(Row) 단위로 메모리 포인터를 이동하며 고속 복사 수행
-                        for (int y = 0; y < height; y++)
-                        {
-                            IntPtr srcRowPtr = enhanced.Ptr(y);
-                            IntPtr destRowPtr = IntPtr.Add(destPtr, y * destStride);
-
-                            int rowBytes = width * bytesPerPixel;
-                            byte[] rowData = new byte[rowBytes];
-                            System.Runtime.InteropServices.Marshal.Copy(srcRowPtr, rowData, 0, rowBytes);
-                            System.Runtime.InteropServices.Marshal.Copy(rowData, 0, destRowPtr, rowBytes);
-                        }
-
-                        // 복사 완료 후 채널 분리(R, G, B, Gray) 동기화
-                        stage.ImageSpace.Split(0);
-                    }
-                }
-            }
-
-            // 5. 변경된 이미지를 화면(CameraForm)에 즉시 갱신
-            foreach (Form openForm in Application.OpenForms)
-            {
-                if (openForm is CameraForm camForm)
-                {
-                    camForm.UpdateDisplay();
-                    break;
-                }
-            }
-        }
+        public void CaptureImage() { Global.Inst.InspStage.CheckImageBuffer(); Global.Inst.InspStage.Grab(0); }
+        public void StartLive() { Global.Inst.InspStage.LiveMode = true; Global.Inst.InspStage.SetWorkingState(WorkingState.LIVE); Global.Inst.InspStage.CheckImageBuffer(); Global.Inst.InspStage.Grab(0); }
+        public void StopLive() { Global.Inst.InspStage.LiveMode = false; Global.Inst.InspStage.SetWorkingState(WorkingState.NONE); }
     }
 }

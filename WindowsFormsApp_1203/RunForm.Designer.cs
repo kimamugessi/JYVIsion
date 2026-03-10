@@ -39,7 +39,6 @@
             this.label4 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
-            this.edge = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnGrab
@@ -152,23 +151,11 @@
             this.label6.TabIndex = 3;
             this.label6.Text = "사진";
             // 
-            // edge
-            // 
-            this.edge.Font = new System.Drawing.Font("Segoe UI Emoji", 20.29091F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.edge.Location = new System.Drawing.Point(179, 83);
-            this.edge.Name = "edge";
-            this.edge.Size = new System.Drawing.Size(50, 50);
-            this.edge.TabIndex = 4;
-            this.edge.Text = "-";
-            this.edge.UseVisualStyleBackColor = true;
-            this.edge.Click += new System.EventHandler(this.edge_Click);
-            // 
             // RunForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(241, 159);
-            this.Controls.Add(this.edge);
+            this.ClientSize = new System.Drawing.Size(186, 159);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.label6);
@@ -199,6 +186,5 @@
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Button edge;
     }
 }
