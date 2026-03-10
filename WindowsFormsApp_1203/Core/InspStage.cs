@@ -169,7 +169,10 @@ namespace JYVision.Core
                     }
                 }
                 _imageSpace.Split(0);
-                DisplayGrabImage(0);
+                if (!_inspWorker.IsRunning)
+                {
+                    DisplayGrabImage(0);
+                }
             }
             catch (Exception ex)
             {
@@ -315,7 +318,10 @@ namespace JYVision.Core
                     img.SaveImage(Path.Combine(_capturePath, $"{++SaveImageIndex:D4}.png"));
             }
 
-            DisplayGrabImage(bufferIndex);
+            if (!_isInspectMode)
+            {
+                DisplayGrabImage(bufferIndex);
+            }
 
             if (LiveMode)
             {
@@ -448,18 +454,18 @@ namespace JYVision.Core
         // 검사 한 주기 - 소진 시 false 반환
         public bool OneCycle()
         {
-            ResetDisplay();
+            //ResetDisplay();   //이걸 해 말어
 
             bool grabSuccess = UseCamera ? Grab(0) : VirtualGrab();
+
             if (!grabSuccess)
             {
                 SLogger.Write("모든 이미지 검사 완료 - 사이클 종료");
                 StopCycle();
                 return false;
             }
-
             RunInspect();
-            Thread.Sleep(200);
+            Thread.Sleep(100);
             return true;
         }
 
@@ -468,6 +474,7 @@ namespace JYVision.Core
             bool isDefect = false;
             _inspWorker.RunInspect(out isDefect);
             RunKeyMatch();
+            DisplayGrabImage(0);
             RunBoltMark();
             _inspWorker.RunDisplayWithOptions(
                 showKeyboard: xylophone.ShowKeyboard,

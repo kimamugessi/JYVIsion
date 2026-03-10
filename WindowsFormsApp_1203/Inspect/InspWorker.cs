@@ -285,15 +285,15 @@ namespace JYVision.Inspect
 
             foreach (Rect key in _lastMatchedKeyRects)
             {
-                displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
+                //displayList.Add(new DrawInspectInfo(key, "Key ROI", InspectType.InspNone, DecisionType.Good));
                 if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) _boltNgCount++;
                 if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) _boltNgCount++;
                 if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
             }
 
             // ① ROI 먼저 표시
-            CameraForm?.ResetDisplay();
-            if (displayList.Count > 0) CameraForm?.AddRect(displayList);
+            //CameraForm?.ResetDisplay();
+            //if (displayList.Count > 0) CameraForm?.AddRect(displayList);
 
             // ② 결과창 업데이트 + 저장 큐에 적재 (비동기)
             SendResultToForm(_boltNgCount, _markNgCount);
@@ -344,11 +344,13 @@ namespace JYVision.Inspect
                     }
                 }
             }
-
-            string label = $"{(pos == BoltPosition.Top ? "Top" : "Bot")} Bolt {(boltFound ? "OK" : "NG")}";
-            displayList.Add(new DrawInspectInfo(
-                boltRoi, label, InspectType.InspNone,
-                boltFound ? DecisionType.Good : DecisionType.Defect));
+            if (displayList != null)
+            {
+                string label = $"{(pos == BoltPosition.Top ? "Top" : "Bot")} Bolt {(boltFound ? "OK" : "NG")}";
+                displayList.Add(new DrawInspectInfo(
+                    boltRoi, label, InspectType.InspNone,
+                    boltFound ? DecisionType.Good : DecisionType.Defect));
+            }
             return boltFound;
         }
 
@@ -374,11 +376,14 @@ namespace JYVision.Inspect
                 }
             }
 
-            displayList.Add(new DrawInspectInfo(
-                markRoi,
-                $"Mark {(markFound ? "OK" : "NG")}",
-                InspectType.InspNone,
-                markFound ? DecisionType.Good : DecisionType.Defect));
+            if (displayList != null)
+            {
+                displayList.Add(new DrawInspectInfo(
+                    markRoi,
+                    $"Mark {(markFound ? "OK" : "NG")}",
+                    InspectType.InspNone,
+                    markFound ? DecisionType.Good : DecisionType.Defect));
+            }
             return markFound;
         }
 
