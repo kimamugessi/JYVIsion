@@ -244,6 +244,9 @@
     <Compile Include="Teach\InspWindow.cs" />
     <Compile Include="Teach\InspWindowFactory.cs" />
     <Compile Include="Teach\Model.cs" />
+    <Compile Include="TrendChartForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UIControl\ImageViewCtrl.cs">
       <SubType>UserControl</SubType>
     </Compile>

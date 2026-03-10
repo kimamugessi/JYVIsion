@@ -96,6 +96,10 @@ namespace JYVision
             // 6. 로그 기록창 (속성창 아래 30% 비중)
             var logForm = new LogForm();
             logForm.Show(propForm.Pane, DockAlignment.Bottom, 0.3);
+
+            var trendForm = new JYVision.Inspect.TrendChartForm();
+            trendForm.Show(_dockPanel, DockState.Float);
+            trendForm.FloatPane.FloatWindow.Size = new Size(800, 500);
         }
 
         //===== [그룹 3] 시스템 라이프사이클 관리 =====
