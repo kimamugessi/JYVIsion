@@ -363,28 +363,49 @@ namespace JYVision.Inspect
         }
 
         //------- 건반 중앙의 마킹(각인) 선명도 및 존재 여부 검사 -------
+        //------- 건반 중앙의 마킹(각인) 선명도 및 존재 여부 검사 (최종 튜닝 버전) -------
         private bool CheckMark(Mat grayMat, Rect key, List<DrawInspectInfo> displayList)
         {
+            // 1. 각인이 위치한 중앙 ROI 설정
             var markRoi = new Rect(
                 key.X + (int)(key.Width * 0.3f),
                 key.Y + (int)(key.Height * 0.5f),
                 (int)(key.Width * 0.4f),
                 (int)(key.Height * 0.25f));
+
+            // 이미지 경계 이탈 방지
             markRoi = markRoi.Intersect(new Rect(0, 0, grayMat.Width, grayMat.Height));
             if (markRoi.Width <= 0 || markRoi.Height <= 0) return false;
 
-            bool markFound;
+            bool markFound = false;
+
             using (var roiMat = new Mat(grayMat, markRoi))
+            using (var enhanced = new Mat())
+            using (var blurred = new Mat())
             {
-                Cv2.MeanStdDev(roiMat, out _, out Scalar stddev);
+                // 2. [CLAHE] 로컬 대비 향상 (어두운 건반의 각인을 강제로 살려냄)
+                // clipLimit이 높을수록 대비가 강해지지만 노이즈도 커집니다. (1.5 ~ 2.0 추천)
+                using (var clahe = Cv2.CreateCLAHE(clipLimit: 1.8, tileGridSize: new OpenCvSharp.Size(8, 8)))
+                {
+                    clahe.Apply(roiMat, enhanced);
+                }
+
+                // 3. [GaussianBlur] 미세 노이즈 제거 (가짜 엣지 방지)
+                Cv2.GaussianBlur(enhanced, blurred, new OpenCvSharp.Size(3, 3), 0);
+
+                // 4. [Laplacian] 선명도(엣지 강도) 추출
                 using (var lap = new Mat())
                 {
-                    Cv2.Laplacian(roiMat, lap, MatType.CV_64F);
-                    Cv2.MeanStdDev(lap, out _, out Scalar lapStd);
-                    markFound = stddev.Val0 > 3.0 && lapStd.Val0 > 1.5;
+                    Cv2.Laplacian(blurred, lap, MatType.CV_64F);
+
+                    // 5. 통계치 계산 (Contrast와 Edge 선명도)
+                    Cv2.MeanStdDev(blurred, out _, out Scalar stddev); // 전체적인 질감
+                    Cv2.MeanStdDev(lap, out _, out Scalar lapStd);    // 각인 엣지의 선명도
+                    markFound = stddev.Val0 > 9.0 && lapStd.Val0 > 2.8;
                 }
             }
 
+            // 결과 UI 출력
             if (displayList != null)
             {
                 displayList.Add(new DrawInspectInfo(
@@ -393,6 +414,7 @@ namespace JYVision.Inspect
                     InspectType.InspNone,
                     markFound ? DecisionType.Good : DecisionType.Defect));
             }
+
             return markFound;
         }
 
