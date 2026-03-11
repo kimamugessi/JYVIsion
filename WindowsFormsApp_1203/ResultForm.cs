@@ -430,7 +430,7 @@ namespace JYVision
 
             using (SaveFileDialog sfd = new SaveFileDialog())
             {
-                sfd.Title = "고해상도 트렌드 그래프 저장";
+                sfd.Title = "TrendGraph 저장";
                 sfd.Filter = "PNG 이미지 (*.png)|*.png|JPEG 이미지 (*.jpg)|*.jpg";
                 sfd.FileName = $"TrendGraph_{DateTime.Now:yyyyMMdd_HHmmss}.png";
 

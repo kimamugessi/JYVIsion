@@ -11,7 +11,7 @@ namespace JYVision.Core
     {
         InspNone = -1,
         InspMatch,
-        InspBoltROI,
+        InspROI,
         InspFilter,
         InspAIModule,
         InspMark,

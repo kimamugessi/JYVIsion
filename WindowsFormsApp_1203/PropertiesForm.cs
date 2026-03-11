@@ -76,7 +76,7 @@ namespace JYVision
                 case InspectType.InspMatch: // 템플릿 매칭 설정창
                     curProp = new MatchInspProp();
                     break;
-                case InspectType.InspBoltROI: // 실로폰(볼트) 테스트 도구창
+                case InspectType.InspROI: // 실로폰(볼트) 테스트 도구창
                     curProp = new xylophone();
                     break;
                 case InspectType.InspFilter: // 이미지 전처리 필터 설정창
@@ -107,7 +107,7 @@ namespace JYVision
                 // [특수 로직] 볼트 매칭 알고리즘일 경우, 보조 도구인 xylophone 탭을 자동 추가
                 if (algo.InspectType == InspectType.InspMatch)
                 {
-                    LoadOptionControl(InspectType.InspBoltROI);
+                    LoadOptionControl(InspectType.InspROI);
                 }
             }
         }
