@@ -12,10 +12,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics; // Stopwatch 사용
 
 namespace JYVision.Inspect
 {
-    // ===== 시각 검사 실행 및 결과 처리 워커 클래스 (통계/UPH/CSV 통합 버전) =====
+    // ===== 시각 검사 실행 및 결과 처리 워커 클래스 (통계 + TactTime CSV 통합 버전) =====
     public class InspWorker : IDisposable
     {
         // ── 취소 토큰 및 상태 ──
@@ -28,14 +29,17 @@ namespace JYVision.Inspect
         private int _boltNgCount = 0;
         private int _markNgCount = 0;
 
-        // ── [추가] 통계 및 데이터 관리 변수 (파레토 및 UPH용) ──
+        // ── 통계 및 데이터 관리 변수 ──
         private int _totalCount = 0;
         private int _okCount = 0;
-        private int _ngBoltCountTotal = 0; // 파레토 차트용 누적 볼트 NG
-        private int _ngMarkCountTotal = 0; // 파레토 차트용 누적 마킹 NG
+        private int _ngBoltCountTotal = 0;
+        private int _ngMarkCountTotal = 0;
         private DateTime _startTime = DateTime.Now;
 
-        // ── 로그 저장 경로 안전 보장 (D드라이브 없으면 프로그램 폴더에 저장) ──
+        // ── 구간별 Tact Time 측정용 변수 ──
+        private long _lastMatchTimeMs = 0;
+
+        // ── 로그 저장 경로 안전 보장 ──
         private string BasePath { get; }
         private string LogDir => Path.Combine(BasePath, "Logs");
         private string LogPath => Path.Combine(LogDir, $"{DateTime.Now:yyyy-MM-dd}_InspectLog.csv");
@@ -55,9 +59,7 @@ namespace JYVision.Inspect
         //------- 생성자: 경로 초기화 및 이미지 저장 전용 백그라운드 스레드 구동 -------
         public InspWorker()
         {
-            // 경로 자동 설정
             BasePath = Directory.Exists(@"D:\") ? @"D:\Results" : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Results");
-
             _saveThread = new Thread(SaveWorkerLoop) { IsBackground = true, Name = "ImageSaveThread" };
             _saveThread.Start();
         }
@@ -74,7 +76,6 @@ namespace JYVision.Inspect
 
         // ===== [그룹 1] 엔진 및 루프 제어 =====
 
-        //------- 연속 검사 사이클 시작 (비동기 루프 실행) -------
         public void StartCycleInspectImage()
         {
             if (_cts != null) { _cts.Cancel(); _cts.Dispose(); }
@@ -84,10 +85,8 @@ namespace JYVision.Inspect
             Task.Run(() => InspectionLoop(_cts.Token), _cts.Token);
         }
 
-        //------- 진행 중인 검사 루프 즉시 중지 -------
         public void Stop() => _cts.Cancel();
 
-        //------- 실제 검사 메인 루프 (중지 신호가 올 때까지 무한 반복) -------
         private void InspectionLoop(CancellationToken token)
         {
             Global.Inst.InspStage.SetWorkingState(WorkingState.INSPECT);
@@ -107,9 +106,8 @@ namespace JYVision.Inspect
             }
         }
 
-        // ===== [그룹 2 & 3] 검사 실행 및 건반 탐색 (기존 코드 유지) =====
+        // ===== [그룹 2 & 3] 검사 실행 및 건반 탐색 =====
 
-        //------- 등록된 모든 검사 알고리즘을 순차적으로 실행하고 결과 수합 -------
         public List<DrawInspectInfo> RunInspect(out bool isDefect)
         {
             isDefect = false;
@@ -128,7 +126,6 @@ namespace JYVision.Inspect
             return finalDisplayList;
         }
 
-        //------- 특정 영역(Window)과 타입만 지정해서 단일 검사 실행 -------
         public bool TryInspect(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) { RunInspect(out _); return true; }
@@ -137,15 +134,22 @@ namespace JYVision.Inspect
             return DisplayResult(inspObj, inspType);
         }
 
-        //------- 전체 이미지에서 건반 영역(ROI)들을 찾아내고 크기 보정 -------
+        //------- 건반 영역(ROI) 탐색 + 소요 시간 측정 -------
         public List<DrawInspectInfo> RunKeyMatch()
         {
+            Stopwatch sw = Stopwatch.StartNew(); // 탐색 시작
+
             Model curMode = Global.Inst.InspStage.CurModel;
             var displayList = new List<DrawInspectInfo>();
             _lastMatchedKeyRects.Clear();
 
             Mat colorMat = Global.Inst.InspStage.GetMat(0, eImageChannel.Color);
-            if (colorMat == null || colorMat.Empty()) return displayList;
+            if (colorMat == null || colorMat.Empty())
+            {
+                sw.Stop();
+                _lastMatchTimeMs = sw.ElapsedMilliseconds;
+                return displayList;
+            }
 
             var matchedRects = new List<Rect>();
             foreach (var window in curMode.InspWindowList)
@@ -178,10 +182,13 @@ namespace JYVision.Inspect
                     displayList.Add(new DrawInspectInfo(keyRect, $"Key H={keyRect.Height}", InspectType.InspNone, DecisionType.Good));
                 }
             }
+
+            sw.Stop(); // 탐색 완료
+            _lastMatchTimeMs = sw.ElapsedMilliseconds;
+
             return displayList;
         }
 
-        //------- 매칭된 대략적인 좌표를 바탕으로 픽셀 색상을 분석해 실제 건반 경계 박스 추출 -------
         private Rect FindActualKeyRect(Mat colorMat, Mat grayMat, Rect matched)
         {
             int imgH = colorMat.Height, imgW = colorMat.Width;
@@ -227,12 +234,11 @@ namespace JYVision.Inspect
             return new Rect(matched.X, finalTop, matched.Width, finalBottom - finalTop);
         }
 
-        //------- 타겟 픽셀이 기준 색상 오차 범위 안에 있는지 확인 (성능 위해 인라인화) -------
         private static bool IsColorMatch(Vec3b px, Vec3b r, int tol) => Math.Abs(px.Item0 - r.Item0) <= tol && Math.Abs(px.Item1 - r.Item1) <= tol && Math.Abs(px.Item2 - r.Item2) <= tol;
 
-        // ===== [그룹 4] 세부 부품 검사 (볼트/각인) =====
+        // ===== [그룹 4] 세부 부품 검사 (볼트/각인) 및 Tact Time 취합 =====
 
-        //------- 찾은 건반 영역들을 돌면서 내부의 볼트/마킹 정상 여부 일괄 검사 -------
+        //------- 볼트/마킹 구간 검사 시간 분리 측정 ------
         public List<DrawInspectInfo> RunBoltMark()
         {
             var displayList = new List<DrawInspectInfo>();
@@ -243,20 +249,47 @@ namespace JYVision.Inspect
 
             _boltNgCount = 0; _markNgCount = 0;
 
+            long boltTimeMs = 0;
+            long markTimeMs = 0;
+            Stopwatch swTotal = Stopwatch.StartNew(); // 이 함수 전체 수행시간 측정용
+            Stopwatch swStep = new Stopwatch();       // 세부 항목 측정용
+
             foreach (Rect key in _lastMatchedKeyRects)
             {
+                // 1. 볼트 검사 소요 시간 누적
+                swStep.Restart();
                 if (!CheckBolt(grayMat, key, BoltPosition.Top, displayList)) _boltNgCount++;
                 if (!CheckBolt(grayMat, key, BoltPosition.Bottom, displayList)) _boltNgCount++;
+                swStep.Stop();
+                boltTimeMs += swStep.ElapsedMilliseconds;
+
+                // 2. 각인(마크) 검사 소요 시간 누적
+                swStep.Restart();
                 if (!CheckMark(grayMat, key, displayList)) _markNgCount++;
+                swStep.Stop();
+                markTimeMs += swStep.ElapsedMilliseconds;
             }
 
+            // 3. UI 업데이트 및 이미지 저장 큐 적재 소요 시간 측정
+            swStep.Restart();
             SendResultToForm(_boltNgCount, _markNgCount);
+            swStep.Stop();
+            long uiTimeMs = swStep.ElapsedMilliseconds;
+
+            swTotal.Stop();
+            long totalCycleTime = _lastMatchTimeMs + swTotal.ElapsedMilliseconds;
+
+            // 4. 구간별 Tact Time 종합 로그 출력
+            SLogger.Write($"[TACT TIME] 탐색:{_lastMatchTimeMs}ms | 볼트:{boltTimeMs}ms | 각인:{markTimeMs}ms | 후처리:{uiTimeMs}ms ➔ 1Cycle 총합: {totalCycleTime}ms");
+
+            // 5. [신규] 통계 업데이트 및 CSV 저장 (Tact Time 데이터 포함)
+            UpdateStatistics(_boltNgCount, _markNgCount, _lastMatchTimeMs, boltTimeMs, markTimeMs, uiTimeMs, totalCycleTime);
+
             return displayList;
         }
 
         private enum BoltPosition { Top, Bottom }
 
-        //------- 해당 건반 위치(상/하)의 볼트 유무 및 퀄리티(명암비) 검사 -------
         private bool CheckBolt(Mat grayMat, Rect key, BoltPosition pos, List<DrawInspectInfo> displayList)
         {
             float yCenter = (pos == BoltPosition.Top) ? 0.20f : 0.80f;
@@ -288,7 +321,6 @@ namespace JYVision.Inspect
             return boltFound;
         }
 
-        //------- 건반 중앙의 마킹(각인) 선명도 및 존재 여부 검사 -------
         private bool CheckMark(Mat grayMat, Rect key, List<DrawInspectInfo> displayList)
         {
             var markRoi = new Rect(key.X + (int)(key.Width * 0.3f), key.Y + (int)(key.Height * 0.5f), (int)(key.Width * 0.4f), (int)(key.Height * 0.25f));
@@ -307,7 +339,6 @@ namespace JYVision.Inspect
                     Cv2.Laplacian(blurred, lap, MatType.CV_64F);
                     Cv2.MeanStdDev(blurred, out _, out Scalar stddev);
                     Cv2.MeanStdDev(lap, out _, out Scalar lapStd);
-                    // 튜닝 완료된 황금 수치 적용
                     markFound = stddev.Val0 > 9.0 && lapStd.Val0 > 2.8;
                 }
             }
@@ -315,7 +346,6 @@ namespace JYVision.Inspect
             return markFound;
         }
 
-        //------- UI 체크 옵션에 따라 건반/볼트/마킹 검사 결과를 화면에 그리기 -------
         public void RunDisplayWithOptions(bool showKeyboard, bool showBolt, bool showMark)
         {
             if (_lastMatchedKeyRects.Count == 0) return;
@@ -333,27 +363,27 @@ namespace JYVision.Inspect
             if (displayList.Count > 0) CameraForm?.AddRect(displayList);
         }
 
-        // ===== [그룹 5] 통계 업데이트 및 데이터 관리 (신규 추가) =====
+        // ===== [그룹 5] 통계 업데이트 및 데이터 관리 (CSV에 시간 기록 추가) =====
 
-        //------- 매 검사 결과마다 통계(파레토, UPH)를 갱신하고 CSV로 내보내기 -------
-        private void UpdateStatistics(int boltNg, int markNg)
+        //------- 매 검사 결과마다 통계(파레토, UPH)를 갱신하고 CSV로 내보내기 (시간 데이터 추가) -------
+        private void UpdateStatistics(int boltNg, int markNg, long matchMs, long boltMs, long markMs, long uiMs, long totalMs)
         {
             _totalCount++;
             bool isTotalOk = (boltNg == 0 && markNg == 0);
 
             if (isTotalOk) _okCount++;
-            _ngBoltCountTotal += boltNg; // 파레토용 누적 데이터
-            _ngMarkCountTotal += markNg; // 파레토용 누적 데이터
+            _ngBoltCountTotal += boltNg;
+            _ngMarkCountTotal += markNg;
 
-            // 1. UPH (가동률) 계산: 시작 시간 대비 현재 총 생산량
+            // UPH (가동률) 계산
             double elapsedHours = (DateTime.Now - _startTime).TotalHours;
             double uph = elapsedHours > 0.0001 ? _totalCount / elapsedHours : _totalCount;
 
-            // 2. CSV 데이터 라인 생성
+            // CSV 데이터 라인 생성 (끝에 시간 측정값 추가)
             string finalResult = isTotalOk ? "OK" : "NG";
-            string logLine = $"{DateTime.Now:HH:mm:ss},{_totalCount},{boltNg},{markNg},{finalResult},{uph:F1}";
+            string logLine = $"{DateTime.Now:HH:mm:ss},{_totalCount},{boltNg},{markNg},{finalResult},{uph:F1},{matchMs},{boltMs},{markMs},{uiMs},{totalMs}";
 
-            // 3. 비동기 CSV 저장 (검사 프레임 저하 방지)
+            // 비동기 CSV 저장
             Task.Run(() => {
                 try
                 {
@@ -361,8 +391,8 @@ namespace JYVision.Inspect
 
                     if (!File.Exists(LogPath))
                     {
-                        // 새 날짜가 되면 엑셀 헤더(제목줄) 생성
-                        string header = "Time,TotalCount,BoltNG,MarkNG,Result,CurrentUPH\n";
+                        // 엑셀 헤더에 항목 추가: Match(ms), Bolt(ms), Mark(ms), UI(ms), Total(ms)
+                        string header = "Time,TotalCount,BoltNG,MarkNG,Result,CurrentUPH,Match(ms),Bolt(ms),Mark(ms),UI(ms),Total(ms)\n";
                         File.WriteAllText(LogPath, header, System.Text.Encoding.UTF8);
                     }
 
@@ -377,7 +407,6 @@ namespace JYVision.Inspect
 
         // ===== [그룹 6] 결과 전송 및 이미지 저장 =====
 
-        //------- 메인 UI에 NG 결과를 업데이트하고, 비동기 큐에 저장할 이미지 데이터 밀어넣기 -------
         private void SendResultToForm(int boltNg, int markNg)
         {
             if (ResultForm == null) return;
@@ -408,15 +437,11 @@ namespace JYVision.Inspect
                 catch { }
             }
 
-            UpdateStatistics(boltNg, markNg);
-
-            // UI 폼에 파레토 누적 데이터 넘기기 (옵션)
-            // ResultForm.UpdateChart(_ngBoltCountTotal, _ngMarkCountTotal);
+            // (기존 UpdateStatistics 위치를 옮겨서, 이제 RunBoltMark 끝에서 호출하도록 변경했습니다)
 
             ResultForm.UpdateNgSummary(boltNg, markNg, captured);
         }
 
-        //------- 큐에 쌓인 검사 결과물들을 하나씩 꺼내서 디스크(하드)에 저장하는 백그라운드 태스크 -------
         private void SaveWorkerLoop()
         {
             foreach (var task in _saveQueue.GetConsumingEnumerable())
@@ -438,7 +463,6 @@ namespace JYVision.Inspect
 
         // ===== [그룹 7] 공통 헬퍼 =====
 
-        //------- 검사 시작 전, 버퍼 이미지를 알고리즘에 밀어넣고 필요한 패턴 학습 처리 -------
         public bool UpdateInspData(InspWindow inspWindow)
         {
             if (inspWindow == null) return false;
@@ -451,7 +475,6 @@ namespace JYVision.Inspect
             return true;
         }
 
-        //------- 검사가 완료된 객체의 결과를 UI(CameraForm) 위에 박스 형태로 출력 -------
         private bool DisplayResult(InspWindow inspObj, InspectType inspType)
         {
             if (inspObj == null) return false;
